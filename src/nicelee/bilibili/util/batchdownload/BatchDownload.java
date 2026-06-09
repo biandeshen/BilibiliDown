@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 
 import nicelee.bilibili.model.ClipInfo;
 import nicelee.bilibili.model.FavList;
+import nicelee.bilibili.util.Logger;
 import nicelee.bilibili.util.ResourcesUtil;
 import nicelee.ui.Global;
 
@@ -34,6 +35,24 @@ public class BatchDownload implements Cloneable {
 				"D:\\Workspace\\javaweb-springboot\\BilibiliDown\\release\\config\\click-once-download-all.config")
 						.Build();
 		System.out.println(bd);
+	}
+
+	final static Pattern videoUrlPattern = Pattern.compile("space\\.bilibili\\.com/([0-9]+)/video");
+
+	/**
+	 * 将 /video/ 类型的URL替换为 /dynamic（动态流包含投稿视频+专属动态视频，一次API覆盖全部）
+	 */
+	public static void replaceVideoWithDynamic(List<BatchDownload> batches) {
+		for (BatchDownload batch : batches) {
+			if (!"url".equals(batch.getType()))
+				continue;
+			Matcher m = videoUrlPattern.matcher(batch.getUrl());
+			if (m.find()) {
+				String newUrl = batch.getUrl().replaceAll("/video.*", "/dynamic");
+				Logger.println("将 /video 替换为 /dynamic: " + batch.getUrl() + " -> " + newUrl);
+				batch.setUrl(newUrl);
+			}
+		}
 	}
 
 	private BatchDownload(String url) {

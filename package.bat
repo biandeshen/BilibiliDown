@@ -1,43 +1,68 @@
-:: cd 到脚本所在目录
+@echo off
+:: Package: produce versioned INeedBiliAV_v{version}.jar
 cd /d %~dp0
+echo === BilibiliDown Package ===
 
-:: 复制整个文件夹
-xcopy src target\ /s /f /h
+:: Read version from Global.java
+for /f "tokens=2 delims=v" %%a in ('findstr /r "bilibili.version.*defaultValue.*v[0-9]" src\nicelee\ui\Global.java') do set VER=v%%a
+for /f "tokens=1 delims=^"" %%a in ("%VER%") do set VER=%%a
+echo Version: %VER%
 
-:: 删除不需要的java文件
-rmdir /s/q target\nicelee\test\
+:: Clean
+if exist _target rmdir /s /q _target
+mkdir _target
 
-:: 获取java文件列表
-cd target
-dir /s /B *.java > ../sources.txt
+:: Copy sources (skip test)
+xcopy src _target\ /s /y /q >nul
+rmdir /s /q _target\nicelee\test 2>nul
+
+:: Collect java files
+cd _target
+dir /s /b *.java > ..\_sources.tmp 2>nul
 cd ..
 
-:: 获取环境变量,解压lib包
-cd libs
-dir /s /B *.jar > ../libs.txt
-cd ../target
-setlocal enabledelayedexpansion
-set classpath=.
-for /f "tokens=*" %%i in (../libs.txt) do (
-set classpath=!classpath!;%%i
-jar xvf %%i
+:: Extract libs into target
+cd _target
+for %%j in (..\libs\*.jar) do jar xf "%%j" 2>nul
+cd ..
+
+:: Compile
+echo Compiling...
+cd _target
+javac -encoding UTF-8 @..\_sources.tmp
+if %errorlevel% neq 0 (
+    cd ..
+    rmdir /s /q _target & del _sources.tmp 2>nul
+    echo COMPILE FAILED
+    pause & exit /b 1
 )
+
+:: Remove .java files
+del /a /f /s /q *.java 2>nul
 cd ..
 
-:: 编译java
-javac -cp !classpath! -encoding UTF-8 @sources.txt
+:: Package main jar
+echo Packaging INeedBiliAV_%VER%.jar ...
+jar cf "INeedBiliAV_%VER%.jar" -C _target .
+echo Done: INeedBiliAV_%VER%.jar
 
-:: 删除所有.java文件
-cd target
-del /a /f /s /q  "*.java"
-cd ..
+:: Package launcher if exists
+if exist src-launcher (
+    mkdir _target-launcher 2>nul
+    xcopy src-launcher _target-launcher\ /s /y /q >nul
+    cd _target-launcher
+    dir /s /b *.java > ..\_sources2.tmp 2>nul
+    javac -encoding UTF-8 @..\_sources2.tmp
+    del /a /f /s /q *.java 2>nul
+    cd ..
+    jar cf "launch_%VER%.jar" -C _target-launcher .
+    echo Done: launch_%VER%.jar
+    rmdir /s /q _target-launcher & del _sources2.tmp 2>nul
+)
 
-:: 打包
-jar cvfe INeedBiliAV.jar nicelee.ui.FrameMain -C ./target .
+:: Cleanup
+rmdir /s /q _target
+del _sources.tmp 2>nul
 
-echo 按任意键删除临时文件
+echo === Package complete: INeedBiliAV_%VER%.jar ===
 pause
-
-rmdir /s/q  target\
-del sources.txt
-del libs.txt

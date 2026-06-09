@@ -180,40 +180,9 @@ public class HttpRequestUtilEx extends HttpRequestUtil {
 		}
 	}
 
+	// now in base class HttpRequestUtil
 	public long getTotalSize(String url, HashMap<String, String> headers) {
-		HttpURLConnection conn = null;
-		try {
-			conn = connect(headers, url, null);
-			conn.connect();
-			if (conn.getResponseCode() == 403) {
-				Logger.println("403被拒，尝试更换Headers");
-				conn.disconnect();
-				headers = HttpHeaders.getBiliAppDownHeaders();
-				conn = connect(headers, url, null);
-				conn.connect();
-			}
-			// 获取所有响应头字段
-			Map<String, List<String>> map = conn.getHeaderFields();
-			long size = Long.parseUnsignedLong(map.get("Content-Length").get(0));
-//			Logger.println(url);
-//			for(Entry<String, List<String>> entry: map.entrySet()){
-//				Logger.println(entry.getKey()+ ": " + entry.getValue());
-//			}
-//			List<String> acRanges = map.get("Accept-Ranges");
-//			List<String> acExposeHeaders = map.get("Access-Control-Expose-Headers");
-//			if(acRanges == null && acExposeHeaders.contains("Content-Range")) {
-//				return 0;
-//			}
-			return size;
-		} catch (Exception e) {
-			e.printStackTrace();
-			return -1;
-		}finally {
-			try {
-				conn.disconnect();
-			}catch (Exception e) {
-			}
-		}
+		return super.getTotalSize(url, headers);
 	}
 
 	private void merge(List<File> srcFiles, File dst) throws IOException {

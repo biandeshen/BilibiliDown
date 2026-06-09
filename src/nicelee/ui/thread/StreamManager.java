@@ -15,10 +15,12 @@ public class StreamManager extends Thread{
         this.inputStream = inputStream;
     }
     
-    public void run () {
+        public void run () {
+        InputStreamReader inputStreamReader = null;
+        BufferedReader bufferedReader = null;
         try {
-        	InputStreamReader inputStreamReader = new InputStreamReader(inputStream, "utf-8");
-        	BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+        	inputStreamReader = new InputStreamReader(inputStream, "utf-8");
+        	bufferedReader = new BufferedReader(inputStreamReader);
         	String line = null;
             while((line = bufferedReader.readLine()) !=null ) {
             	if(Global.debugCmd)
@@ -26,8 +28,11 @@ public class StreamManager extends Thread{
             }
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+        	try { if (bufferedReader != null) bufferedReader.close(); } catch (Exception ignored) {}
+        	try { if (inputStreamReader != null) inputStreamReader.close(); } catch (Exception ignored) {}
+        	try { if (inputStream != null) inputStream.close(); } catch (Exception ignored) {}
         }
         process.destroy();
-        //System.out.println("转码完毕.");
     }
 }

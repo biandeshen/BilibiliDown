@@ -14,6 +14,8 @@ import nicelee.ui.item.DownloadInfoPanel;
 
 public class MonitoringThread extends Thread {
 	
+	private static final java.util.regex.Pattern AV_PATTERN = java.util.regex.Pattern.compile("(?:av|h|cv|opus|BV|season|au|edd_)[0-9a-zA-Z_]+-[0-9]+-p[0-9]+");
+	
 	public MonitoringThread() {
 		this.setName("Thread - Monitoring Download");
 		this.setDaemon(true);
@@ -40,7 +42,7 @@ public class MonitoringThread extends Thread {
 					if(file != null) {
 						String path = file.getAbsolutePath();
 						if(Global.doRenameAfterComplete && downloader.currentStatus() == StatusEnum.SUCCESS) {
-							path = path.replaceFirst("(?:av|h|cv|opus|BV|season|au|edd_)[0-9a-zA-Z_]+-[0-9]+-p[0-9]+", formattedTitle);
+							path = AV_PATTERN.matcher(path).replaceFirst(formattedTitle);
 						}
 						dp.getLbFileName().setText(path);
 						dp.getLbFileName().setToolTipText(path);
@@ -181,7 +183,16 @@ public class MonitoringThread extends Thread {
 					}
 				}
 			}
-			totalTask = map.size();
+		totalTask = map.size();
+			// 清理已完成的任务，防止内存泄漏
+			if (doneTask > 0) {
+				java.util.Iterator<Entry<DownloadInfoPanel, IDownloader>> it = map.entrySet().iterator();
+				while (it.hasNext()) {
+					if (it.next().getValue().currentStatus() == StatusEnum.SUCCESS) {
+						it.remove();
+					}
+				}
+			}
 			//System.out.println("当前map总任务数： " + totalTask);
 			//totalTask = activeTask + pauseTask + doneTask + queuingTask;
 			//System.out.println("当前计算总任务数： " + totalTask);

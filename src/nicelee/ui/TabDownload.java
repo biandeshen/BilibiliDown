@@ -9,15 +9,20 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JCheckBox;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import java.net.URI;
 
 import nicelee.ui.item.DownloadInfoPanel;
+import nicelee.ui.thread.DownloadRunnableInternal;
 import nicelee.ui.item.MJButton;
 import nicelee.ui.thread.DownloadExecutors;
+import nicelee.bilibili.INeedAV;
 
 public class TabDownload extends JPanel implements ActionListener {
 
@@ -32,6 +37,9 @@ public class TabDownload extends JPanel implements ActionListener {
 	JScrollPane jpScorll;
 	JLabel lbStatus;
 	JButton btnContinue, btnStop, btnDeleteAll, btnDeleteDown;
+	JPanel largeFilePanel;
+	JLabel lbLargeFileStatus;
+	JButton btnLargeDl, btnLargeClear;
 	public TabDownload() {
 		initUI();
 	}
@@ -80,6 +88,32 @@ public class TabDownload extends JPanel implements ActionListener {
 		this.add(btnDeleteAll);
 		this.add(btnDeleteDown);
 
+		// --- large file pending area ---
+		lbLargeFileStatus = new JLabel("Large file pending: 0");
+		lbLargeFileStatus.setPreferredSize(new Dimension(350, 24));
+		lbLargeFileStatus.setOpaque(true);
+		lbLargeFileStatus.setBackground(new Color(255, 240, 200));
+		lbLargeFileStatus.setBorder(BorderFactory.createLineBorder(Color.ORANGE));
+		this.add(lbLargeFileStatus);
+		
+		largeFilePanel = new JPanel();
+		largeFilePanel.setLayout(new BoxLayout(largeFilePanel, BoxLayout.Y_AXIS));
+		largeFilePanel.setOpaque(false);
+		JScrollPane lfScroll = new JScrollPane(largeFilePanel);
+		lfScroll.setPreferredSize(new Dimension(1100, 120));
+		lfScroll.setOpaque(false);
+		lfScroll.getViewport().setOpaque(false);
+		this.add(lfScroll);
+		
+		btnLargeDl = new MJButton("Download Checked");
+		btnLargeDl.setPreferredSize(new Dimension(140, 28));
+		btnLargeDl.addActionListener(this);
+		btnLargeClear = new MJButton("Clear All Large");
+		btnLargeClear.setPreferredSize(new Dimension(140, 28));
+		btnLargeClear.addActionListener(this);
+		this.add(btnLargeDl);
+		this.add(btnLargeClear);
+		
 		// 下载任务Panel
 		jpContent = new JPanel();
 		jpContent.setPreferredSize(new Dimension(1100, 300));
@@ -96,6 +130,44 @@ public class TabDownload extends JPanel implements ActionListener {
 		jpScorll.setOpaque(false);
 		jpScorll.getViewport().setOpaque(false);
 		this.add(jpScorll);
+	}
+
+		public void refreshLargeFileList() {
+		largeFilePanel.removeAll();
+		int count = 0;
+		java.awt.Desktop desktop = java.awt.Desktop.isDesktopSupported() ? java.awt.Desktop.getDesktop() : null;
+		for (Global.PendingLargeFile plf : Global.largeFilePendingList) {
+			JPanel row = new JPanel();
+			row.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
+			row.setOpaque(false);
+			JCheckBox cb = new JCheckBox();
+			plf.checkBox = cb;
+			row.add(cb);
+			String sizeStr = plf.estimatedSize > 1073741824L ?
+				String.format("%.1fGB", plf.estimatedSize / 1073741824.0) :
+				String.format("%.0fMB", plf.estimatedSize / 1048576.0);
+			String upName = plf.clip != null ? plf.clip.getUpName() : "";
+			String label = "[" + sizeStr + "] " + (upName.isEmpty() ? "" : upName + " - ") + plf.avTitle;
+			JLabel lbl = new JLabel(label);
+			lbl.setPreferredSize(new Dimension(850, 20));
+			row.add(lbl);
+			// Open video in browser
+			JButton btnOpen = new JButton("▶");  // play button
+			btnOpen.setPreferredSize(new Dimension(36, 20));
+			btnOpen.setToolTipText("Open in browser");
+			final String bvid = plf.avid;
+			btnOpen.addActionListener(e -> {
+				try {
+					if (desktop != null) desktop.browse(new java.net.URI("https://www.bilibili.com/video/" + bvid));
+				} catch (Exception ex) { ex.printStackTrace(); }
+			});
+			row.add(btnOpen);
+			largeFilePanel.add(row);
+			count++;
+		}
+		lbLargeFileStatus.setText("large file pending: " + count + "  (check + Download Checked)");
+		largeFilePanel.revalidate();
+		largeFilePanel.repaint();
 	}
 
 	@Override
@@ -177,6 +249,31 @@ public class TabDownload extends JPanel implements ActionListener {
 			for(DownloadInfoPanel dp : Global.downloadTaskList.keySet()) {
 				dp.removeTask(true);
 			}
+		} else if (e.getSource() == btnLargeDl) {
+			java.util.Iterator<Global.PendingLargeFile> it = Global.largeFilePendingList.iterator();
+			while (it.hasNext()) {
+				Global.PendingLargeFile plf = it.next();
+				if (plf.checkBox != null && plf.checkBox.isSelected()) {
+					it.remove();
+					final Global.PendingLargeFile fplf = plf;
+					javax.swing.SwingUtilities.invokeLater(() -> {
+						try {
+							INeedAV ina = new INeedAV();
+						DownloadInfoPanel dp = new DownloadInfoPanel(fplf.clip, fplf.qn);
+						dp.initDownloadParams(ina, fplf.urlQuery, fplf.avid + "-" + fplf.realQN, fplf.formattedTitle, fplf.realQN);
+							Global.downloadTaskList.put(dp, dp.iNeedAV.getDownloader());
+							Global.downloadTab.jpContent.add(dp);
+							Global.downloadTab.jpContent.revalidate();
+							DownloadRunnableInternal runnable = new DownloadRunnableInternal(dp, System.currentTimeMillis(), false, 0);
+							Global.queryThreadPool.execute(runnable);
+						} catch (Exception ex) { ex.printStackTrace(); }
+					});
+				}
+			}
+			refreshLargeFileList();
+		} else if (e.getSource() == btnLargeClear) {
+			Global.largeFilePendingList.clear();
+			refreshLargeFileList();
 		} else if (e.getSource() == btnDeleteDown) {
 			for(DownloadInfoPanel dp : Global.downloadTaskList.keySet()) {
 				dp.removeTask(false);

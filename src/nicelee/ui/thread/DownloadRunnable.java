@@ -13,8 +13,14 @@ import nicelee.bilibili.util.RepoUtil;
 import nicelee.bilibili.util.ResourcesUtil;
 import nicelee.bilibili.util.custom.System;
 import nicelee.ui.Global;
+import javax.swing.SwingUtilities;
+import nicelee.bilibili.util.Logger;
+import nicelee.bilibili.util.HttpHeaders;
+import nicelee.bilibili.util.ResourcesUtil;
 import nicelee.ui.TabDownload;
 import nicelee.ui.item.DownloadInfoPanel;
+import nicelee.ui.item.JOptionPane;
+import nicelee.ui.item.JOptionPane;
 import nicelee.ui.item.JOptionPaneManager;
 
 public class DownloadRunnable implements Runnable {
@@ -97,6 +103,29 @@ public class DownloadRunnable implements Runnable {
 		if(!ResourcesUtil.isPicture(avid)){
 			urlQuery = iNeedAV.getInputParser(avid).getVideoLink(avid, cid, qn, Global.downloadFormat); //该步含网络查询， 可能较为耗时
 			realQN = iNeedAV.getInputParser(avid).getVideoLinkQN();
+			// large file -> put into pending list, not immediate download
+			if (Global.largeFileThreshold > 0 && !ResourcesUtil.isPicture(avid) && urlQuery != null) {
+				long estSize = 0;
+				String[] parts = urlQuery.split("#");
+				HttpHeaders hdrs = new HttpHeaders();
+				for (String part : parts) {
+					if (part.isEmpty()) continue;
+					long sz = iNeedAV.getUtil().getTotalSize(part, hdrs.getBiliJsonAPIHeaders(avid));
+					if (sz > 0) estSize += sz;
+				}
+				if (estSize > Global.largeFileThreshold) {
+					Global.PendingLargeFile plf = new Global.PendingLargeFile(clip.getAvTitle(), estSize);
+					plf.avid = avid; plf.cid = cid; plf.qn = qn; plf.realQN = realQN; plf.page = page;
+					plf.formattedTitle = CmdUtil.genFormatedName(avInfo, clip, realQN);
+					plf.urlQuery = urlQuery;
+					plf.clip = clip;
+					plf.avInfo = avInfo;
+					Global.largeFilePendingList.add(plf);
+					SwingUtilities.invokeLater(() -> Global.downloadTab.refreshLargeFileList());
+					Logger.println("Large file pending: " + clip.getAvTitle());
+					return;
+				}
+			}
 		}else {
 			urlQuery = clip.getLinks().get(0);
 			realQN = 0;

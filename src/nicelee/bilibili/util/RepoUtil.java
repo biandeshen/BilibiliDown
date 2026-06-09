@@ -86,6 +86,20 @@ public class RepoUtil {
 	}
 
 	/**
+	 * 快速检查某个bvid是否已有任意视频入库（不区分清晰度）
+	 */
+	public static boolean isBvInRepo(String bvid) {
+		if (definitionStrictMode)
+			return false; // 严格模式下无法跳过，因为不知道目标清晰度
+		String prefix = bvid + "-p";
+		for (String entry : downRepo) {
+			if (entry.startsWith(prefix))
+				return true;
+		}
+		return false;
+	}
+
+	/**
 	 * 仓库里是否存在该条记录
 	 * @param avRecord
 	 * @return

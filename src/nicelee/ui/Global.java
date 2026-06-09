@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.swing.ImageIcon;
+import javax.swing.JCheckBox;
 import javax.swing.JTabbedPane;
 
 import nicelee.bilibili.annotations.Config;
@@ -94,6 +95,14 @@ public class Global {
 	public static int downloadPoolSize;// 下载线程池
 	@Config(key = "bilibili.download.period.between.download", note = "每个下载任务完成后的等待时间(ms)", defaultValue = "0", multiply = 1)
 	public static long sleepAfterDownloadComplete;
+	@Config(key = "bilibili.download.period.between.pages", note = "分页查询时页间等待时间(ms)", defaultValue = "1500", multiply = 1)
+	public static long sleepBetweenPages;
+	@Config(key = "bilibili.download.period.between.batches", note = "不同url间等待时间(ms)", defaultValue = "1000", multiply = 1)
+	public static long sleepBetweenBatches;
+	@Config(key = "bilibili.download.period.between.cycles", note = "实时下载轮次间等待时间(ms)", defaultValue = "1800000", multiply = 1)
+	public static long sleepBetweenCycles;
+	@Config(key = "bilibili.download.largeFileThreshold", note = "大文件提醒阈值(MB), 0为不提醒", defaultValue = "500", multiply = 1024 * 1024)
+	public static long largeFileThreshold;
 	@Config(key = "bilibili.download.period.between.query", note = "每个关于下载的查询任务完成后的等待时间(ms)", defaultValue = "0", multiply = 1)
 	public static long sleepAfterDownloadQuery;
 	public static ExecutorService downLoadThreadPool;// 下载线程池
@@ -103,6 +112,21 @@ public class Global {
 	public static JTabbedPane tabs; // 下载显示界面
 	public static TabDownload downloadTab; // 下载显示界面
 	public static ConcurrentHashMap<DownloadInfoPanel, IDownloader> downloadTaskList = new ConcurrentHashMap<DownloadInfoPanel, IDownloader>();
+	// large file pending list
+	public static java.util.concurrent.ConcurrentLinkedQueue<PendingLargeFile> largeFilePendingList = new java.util.concurrent.ConcurrentLinkedQueue<>();
+	
+	public static class PendingLargeFile {
+		public String avTitle, avid, cid, formattedTitle, urlQuery;
+		public long estimatedSize;
+		public int qn, realQN, page;
+		public nicelee.bilibili.model.ClipInfo clip;
+		public nicelee.bilibili.model.VideoInfo avInfo;
+		public JCheckBox checkBox;
+		public PendingLargeFile(String avTitle, long estimatedSize) {
+			this.avTitle = avTitle;
+			this.estimatedSize = estimatedSize;
+		}
+	}
 
 	@Config(key = "bilibili.download.multiThread.count", note = "单个下载任务开启线程数(0,1为不开启多线程)", defaultValue = "0")
 	public static int multiThreadCnt; // 多线程下载开启的线程数 0为不开启多线程下载

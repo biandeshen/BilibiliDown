@@ -278,10 +278,8 @@ public class DownloadInfoPanel extends JPanel implements ActionListener {
 			Global.downloadTab.getJpContent().updateUI();
 			Global.downloadTab.getJpContent().repaint();
 			// 删除未完成的下载文件
-			File file = new File(lbFileName.getText() + ".part");
-			if (file.exists()) {
-				file.delete();
-			}
+			// .part preserved for resume; File file = new File(lbFileName.getText() + ".part");
+				// if (file.exists()) { file.delete(); }
 		}
 	}
 

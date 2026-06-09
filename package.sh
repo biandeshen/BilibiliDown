@@ -1,41 +1,50 @@
-# cd 到脚本所在目录
+#!/bin/bash
+# Package: produce versioned INeedBiliAV_v{version}.jar
 cd $(dirname $0)
 
-# 复制整个文件夹
-mkdir target
-cp -r src/. target
+# Read version
+VER=$(grep -oP 'bilibili.version.*defaultValue.*v\K[\d.]+' src/nicelee/ui/Global.java)
+VER="v$VER"
+echo "Version: $VER"
 
-# 删除不需要的java文件
-rm -rf ./target/nicelee/test
+# Clean
+rm -rf _target && mkdir -p _target
+cp -r src/. _target
+rm -rf _target/nicelee/test
 
-# 获取java文件列表
-cd target
-find `pwd` -name "*.java" > ../sources.txt
+# Find sources
+cd _target
+find $(pwd) -name "*.java" > ../_sources.tmp
 cd ..
 
-# 获取环境变量,解压lib包
-cd libs
-find `pwd` -name "*.jar" > ../libs.txt
-cat ../libs.txt
-cd ../target
-for jar in  `cat ../libs.txt`
-do
-    jclasspath=$jar:$jclasspath
-    jar xvf $jar
-done
+# Extract libs
+cd _target
+for jar in ../libs/*.jar; do jar xf "$jar" 2>/dev/null; done
 cd ..
 
-# 编译java
-javac -cp $jclasspath -encoding UTF-8 @sources.txt
-
-# 删除所有.java文件
-cd target
-find . -name "*.java" |xargs rm -rf {}
+# Compile
+cd _target
+javac -encoding UTF-8 @../_sources.tmp || { echo "COMPILE FAILED"; exit 1; }
+find . -name "*.java" | xargs rm -f
 cd ..
 
-# 打包
-jar cvfe INeedBiliAV.jar nicelee.ui.FrameMain -C ./target .
+# Package
+jar cf "INeedBiliAV_$VER.jar" -C _target .
+echo "Done: INeedBiliAV_$VER.jar"
 
-rm -rf target
-rm -f sources.txt
-rm -f libs.txt
+# Launcher
+if [ -d src-launcher ]; then
+  rm -rf _target-launcher && mkdir -p _target-launcher
+  cp -r src-launcher/. _target-launcher
+  cd _target-launcher
+  find $(pwd) -name "*.java" > ../_sources2.tmp
+  javac -encoding UTF-8 @../_sources2.tmp
+  find . -name "*.java" | xargs rm -f
+  cd ..
+  jar cf "launch_$VER.jar" -C _target-launcher .
+  echo "Done: launch_$VER.jar"
+  rm -rf _target-launcher ../_sources2.tmp 2>/dev/null
+fi
+
+rm -rf _target _sources.tmp
+echo "=== Package complete: INeedBiliAV_$VER.jar ==="

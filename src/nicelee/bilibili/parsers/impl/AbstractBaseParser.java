@@ -25,6 +25,7 @@ import nicelee.bilibili.util.HttpCookies;
 import nicelee.bilibili.util.HttpHeaders;
 import nicelee.bilibili.util.HttpRequestUtil;
 import nicelee.bilibili.util.Logger;
+import java.util.HashMap;
 import nicelee.bilibili.util.convert.ConvertUtil;
 import nicelee.ui.Global;
 
@@ -34,6 +35,8 @@ public abstract class AbstractBaseParser implements IInputParser {
 	protected HttpRequestUtil util;
 	protected int pageSize = 20;
 	protected IParamSetter paramSetter;
+	// cache bv detail to avoid redundant wbi/view/detail calls
+	private HashMap<String, Object[]> bvDetailCache = new HashMap<>();
 
 	public AbstractBaseParser(Object... obj) {
 		this.util = (HttpRequestUtil) obj[0];
@@ -99,6 +102,8 @@ public abstract class AbstractBaseParser implements IInputParser {
 			viInfo.setAuthor(detailObj.getJSONObject("upper").getString("name"));
 			viInfo.setAuthorId(String.valueOf(detailObj.getJSONObject("upper").getLong("mid")));
 			viInfo.setVideoPreview(detailObj.getString("cover"));
+			boolean _isNormal = detailObj.getInt("attr") != 2;
+			bvDetailCache.put(bvId, new Object[]{aid, _isNormal});
 		} else {
 			JSONObject detailObj = detailRaw.getJSONObject("data").getJSONObject("View");
 			ctime = detailObj.optLong("ctime") * 1000;
@@ -108,6 +113,8 @@ public abstract class AbstractBaseParser implements IInputParser {
 			viInfo.setAuthor(detailObj.getJSONObject("owner").getString("name"));
 			viInfo.setAuthorId(String.valueOf(detailObj.getJSONObject("owner").getLong("mid")));
 			viInfo.setVideoPreview(detailObj.getString("pic"));
+			boolean _isNormal = detailObj.optString("redirect_url").isEmpty();
+			bvDetailCache.put(bvId, new Object[]{aid, _isNormal});
 		}
 
 		// 判断是否是互动视频
@@ -351,28 +358,36 @@ public abstract class AbstractBaseParser implements IInputParser {
 		JSONObject jObj = null;
 		// 根据downloadFormat确定fnval
 		String fnval = (downloadFormat & 0x01) == Global.MP4? "4048" : "2";
-		// 先判断类型
+		// check cache first to avoid redundant wbi/view/detail calls
 		Long aid; boolean isNormalType;
-		String url = "https://api.bilibili.com/x/web-interface/wbi/view/detail?platform=web&bvid="
-				+ bvId;
-		url += API.genDmImgParams();
-		url = API.encWbi(url);
-		HashMap<String, String> header = headers.getBiliJsonAPIHeaders(bvId);
-		String callBack = util.getContent(url, header, HttpCookies.globalCookiesWithFingerprint());
-		JSONObject detailRaw = new JSONObject(callBack);
-		if(detailRaw.optInt("code") == -403) {
-			aid = ConvertUtil.Bv2Av(bvId);
-			String detailUrl = String.format("https://api.bilibili.com/x/v3/fav/resource/infos?resources=%d:2&platform=web&folder_mid=&folder_id=", aid);
-			String detailJson = util.getContent(detailUrl, header, HttpCookies.globalCookiesWithFingerprint());
-			Logger.println(detailUrl);
-			Logger.println(detailJson);
-			JSONObject detailObj = new JSONObject(detailJson).getJSONArray("data").getJSONObject(0);
-			isNormalType = detailObj.getInt("attr") != 2; // 0 普通 16 互动视频
+		String url;
+			Object[] cached = bvDetailCache.get(bvId);
+		if (cached != null) {
+			aid = (Long) cached[0];
+			isNormalType = (Boolean) cached[1];
 		} else {
-			JSONObject infoObj = detailRaw.getJSONObject("data")
-					.getJSONObject("View");
-			aid = infoObj.optLong("aid");
-			isNormalType = infoObj.optString("redirect_url").isEmpty();
+			url = "https://api.bilibili.com/x/web-interface/wbi/view/detail?platform=web&bvid="
+					+ bvId;
+			url += API.genDmImgParams();
+			url = API.encWbi(url);
+			HashMap<String, String> header = headers.getBiliJsonAPIHeaders(bvId);
+			String callBack = util.getContent(url, header, HttpCookies.globalCookiesWithFingerprint());
+			JSONObject detailRaw = new JSONObject(callBack);
+			if(detailRaw.optInt("code") == -403) {
+				aid = ConvertUtil.Bv2Av(bvId);
+				String detailUrl = String.format("https://api.bilibili.com/x/v3/fav/resource/infos?resources=%d:2&platform=web&folder_mid=&folder_id=", aid);
+				String detailJson = util.getContent(detailUrl, header, HttpCookies.globalCookiesWithFingerprint());
+				Logger.println(detailUrl);
+				Logger.println(detailJson);
+				JSONObject detailObj = new JSONObject(detailJson).getJSONArray("data").getJSONObject(0);
+				isNormalType = detailObj.getInt("attr") != 2;
+			} else {
+				JSONObject infoObj = detailRaw.getJSONObject("data")
+						.getJSONObject("View");
+				aid = infoObj.optLong("aid");
+				isNormalType = infoObj.optString("redirect_url").isEmpty();
+			}
+			bvDetailCache.put(bvId, new Object[]{aid, isNormalType});
 		}
 		if (isNormalType) {
 			String trylookTail = Global.isLogin ? "" : "&try_look=1";

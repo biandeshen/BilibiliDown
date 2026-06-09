@@ -19,6 +19,7 @@ import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import nicelee.bilibili.util.HttpHeaders;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
@@ -40,6 +41,28 @@ public class HttpRequestUtil {
 	// 下载文件
 	protected String savePath = "./download/";
 	protected File fileDownload;
+
+	/** get file size via Content-Length header */
+	public long getTotalSize(String url, HashMap<String, String> headers) {
+		HttpURLConnection conn = null;
+		try {
+			conn = connect(headers, url, null);
+			conn.connect();
+			if (conn.getResponseCode() == 403) {
+				conn.disconnect();
+				headers = HttpHeaders.getBiliAppDownHeaders();
+				conn = connect(headers, url, null);
+				conn.connect();
+			}
+			Map<String, List<String>> map = conn.getHeaderFields();
+			long size = Long.parseUnsignedLong(map.get("Content-Length").get(0));
+			return size;
+		} catch (Exception e) {
+			return -1;
+		} finally {
+			try { if (conn != null) conn.disconnect(); } catch (Exception ignored) {}
+		}
+	}
 	// 下载状态
 	protected volatile StatusEnum status = StatusEnum.NONE; // 0 正在下载; 1 下载完毕; -1 出现错误; -2 人工停止;-3 队列中
 	// 下载标志,置False可以停止下载
@@ -328,7 +351,7 @@ public class HttpRequestUtil {
 			}
 
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			byte[] buffer = new byte[256];
+			byte[] buffer = new byte[4096];
 			int len = ism.read(buffer);
 			while (len > 0) {
 				out.write(buffer, 0, len);
@@ -389,7 +412,7 @@ public class HttpRequestUtil {
 				ism = new GZIPInputStream(conn.getInputStream());
 			}
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			byte[] buffer = new byte[256];
+			byte[] buffer = new byte[4096];
 			int len = ism.read(buffer);
 			while (len > 0) {
 				out.write(buffer, 0, len);

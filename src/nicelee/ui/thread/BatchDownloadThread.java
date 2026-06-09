@@ -51,6 +51,7 @@ public class BatchDownloadThread extends Thread {
 			File f = ResourcesUtil.search(configFilePath);
 			checkValid(f);
 			List<BatchDownload> bds = new BatchDownloadsBuilder(new FileInputStream(f)).Build();
+			BatchDownload.replaceVideoWithDynamic(bds);
 			Logger.println("一键下载进行中。。。。。");
 			Logger.println(bds);
 			for (BatchDownload batch : bds) {
@@ -104,9 +105,9 @@ public class BatchDownloadThread extends Thread {
 					}
 					Logger.printf("当前url: %s ,page: %d, 分页查询完毕", batch.getUrl(), page);
 					page++;
-					Thread.sleep(1500);
+					Thread.sleep(Global.sleepBetweenPages);
 				}
-				Thread.sleep(1000);
+				Thread.sleep(Global.sleepBetweenBatches);
 				Logger.printf("[url:%s] 任务完毕", batch.getUrl());
 				if (batch.isAlertAfterMissionComplete()) {
 					showMessageDialog(null, "url:" + batch.getUrl(), "任务完毕!! " + batch.getRemark(),

@@ -5,7 +5,10 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Enumeration;
 
 import javax.swing.BorderFactory;
@@ -22,6 +25,7 @@ import nicelee.bilibili.util.CmdUtil;
 import nicelee.bilibili.util.ConfigUtil;
 import nicelee.bilibili.util.HttpCookies;
 import nicelee.bilibili.util.RepoUtil;
+import nicelee.bilibili.util.Logger;
 import nicelee.bilibili.util.ResourcesUtil;
 import nicelee.bilibili.util.SysUtil;
 import nicelee.ui.item.MJTitleBar;
@@ -61,7 +65,7 @@ public class FrameMain extends JFrame {
 		if (Global.lockCheck) {
 			if (ConfigUtil.isRunning()) {
 				Global.frWaiting.stop();
-				JOptionPane.showMessageDialog(null, "程序已经在运行!", "请注意!!", JOptionPane.WARNING_MESSAGE);
+				JOptionPane.showMessageDialog(null, "程序已经在运行!", "请注意!!", javax.swing.JOptionPane.WARNING_MESSAGE);
 				return;
 			}
 			ConfigUtil.createLock();
@@ -113,6 +117,8 @@ public class FrameMain extends JFrame {
 		if (Global.saveToRepo) {
 			RepoUtil.init(false);
 		}
+		// scan for incomplete .part files
+		scanPartFilesAndResume();
 //		FrameQRCode qr = new FrameQRCode("https://www.bilibili.com/");
 //		qr.initUI();
 //		qr.dispose();
@@ -174,9 +180,28 @@ public class FrameMain extends JFrame {
 
 		this.setTitle("BiliBili Down~~" + Global.version);
 		this.setSize(1200, 745);
-		this.setResizable(false);
+		this.setResizable(true);
+		this.setMinimumSize(new Dimension(800, 500));
 		this.setLocationRelativeTo(null);
-		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		this.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		this.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				int active = Global.downloadTab != null ? Global.downloadTab.activeTask : 0;
+				if (active > 0) {
+					int r = javax.swing.JOptionPane.showConfirmDialog(FrameMain.this,
+						active + " 个下载任务正在进行中。\n确定要退出吗？",
+						"确认退出", javax.swing.JOptionPane.YES_NO_OPTION, javax.swing.JOptionPane.WARNING_MESSAGE);
+					if (r != javax.swing.JOptionPane.YES_OPTION) return;
+				}
+				// 保存配置
+				try { nicelee.bilibili.util.ConfigUtil.saveConfig(); } catch (Exception ignored) {}
+				// 关闭线程池
+				if (Global.downLoadThreadPool != null) Global.downLoadThreadPool.shutdownNow();
+				if (Global.queryThreadPool != null) Global.queryThreadPool.shutdownNow();
+				System.exit(0);
+			}
+		});
 		URL iconURL = this.getClass().getResource("/resources/favicon.png");
 		ImageIcon icon = new ImageIcon(iconURL);
 		this.setIconImage(icon.getImage());
@@ -227,4 +252,47 @@ public class FrameMain extends JFrame {
 		}
 	}
 
+	// Scan for .part files on startup and offer to clean up
+	private static void scanPartFilesAndResume() {
+		File downloadDir = new File(Global.savePath);
+		if (!downloadDir.exists()) return;
+		java.util.List<File> partFiles = new java.util.ArrayList<>();
+		findPartFiles(downloadDir, partFiles);
+		if (partFiles.isEmpty()) return;
+		
+		long totalSize = 0;
+		for (File f : partFiles) totalSize += f.length();
+		StringBuilder sb = new StringBuilder("Found " + partFiles.size() + " incomplete download(s)\n");
+		sb.append("Total: ").append(totalSize / 1048576).append(" MB\n\n");
+		int showCnt = Math.min(partFiles.size(), 8);
+		for (int i = 0; i < showCnt; i++) {
+			String name = partFiles.get(i).getName();
+			if (name.endsWith(".part")) name = name.substring(0, name.length() - 5);
+			sb.append("  ").append(name).append("\n");
+		}
+		if (partFiles.size() > 8) sb.append("  ... and " + (partFiles.size() - 8) + " more\n");
+		sb.append("\nKeep these files for resume?\n(No = delete all .part files)");
+		
+		int r = javax.swing.JOptionPane.showConfirmDialog(null, sb.toString(),
+			"Incomplete Downloads", javax.swing.JOptionPane.YES_NO_CANCEL_OPTION, javax.swing.JOptionPane.QUESTION_MESSAGE);
+		if (r == javax.swing.JOptionPane.NO_OPTION) {
+			int deleted = 0;
+			for (File f : partFiles) { if (f.delete()) deleted++; }
+			Logger.println("Deleted " + deleted + " .part files");
+		} else {
+			Logger.println("Kept " + partFiles.size() + " .part files for resume");
+		}
+	}
+	
+	private static void findPartFiles(File dir, java.util.List<File> result) {
+		File[] files = dir.listFiles();
+		if (files == null) return;
+		for (File f : files) {
+			if (f.isDirectory()) {
+				findPartFiles(f, result);
+			} else if (f.getName().endsWith(".part")) {
+				result.add(f);
+			}
+		}
+	}
 }
