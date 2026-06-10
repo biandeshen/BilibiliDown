@@ -103,6 +103,8 @@ public class MJMenuBar extends JMenuBar {
 		operMenu.addSeparator();
 		operMenu.add(loginRelated);
 		operMenu.addSeparator();
+		operMenu.add(migrateDownload);
+		operMenu.add(largeFileDownload);
 		operMenu.add(batchDownloadRbyR);
 		
 		

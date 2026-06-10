@@ -184,21 +184,7 @@ public class MonitoringThread extends Thread {
 				}
 			}
 		totalTask = map.size();
-			// 清理已完成的任务，防止内存泄漏
-			if (doneTask > 0) {
-				java.util.Iterator<Entry<DownloadInfoPanel, IDownloader>> it = map.entrySet().iterator();
-				while (it.hasNext()) {
-					java.util.Map.Entry<DownloadInfoPanel, IDownloader> entry = it.next();
-					if (entry.getValue().currentStatus() == StatusEnum.SUCCESS) {
-						javax.swing.SwingUtilities.invokeLater(() -> {
-							Global.downloadTab.getJpContent().remove(entry.getKey());
-							Global.downloadTab.getJpContent().revalidate();
-							Global.downloadTab.getJpContent().repaint();
-						});
-						it.remove();
-					}
-				}
-			}
+// auto-cleanup removed per user preference
 			//System.out.println("当前map总任务数： " + totalTask);
 			//totalTask = activeTask + pauseTask + doneTask + queuingTask;
 			//System.out.println("当前计算总任务数： " + totalTask);
