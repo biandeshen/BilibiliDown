@@ -16,7 +16,7 @@ import nicelee.bilibili.util.HttpCookies;
 import nicelee.bilibili.util.HttpHeaders;
 import nicelee.bilibili.util.Logger;
 import nicelee.bilibili.util.RepoUtil;
-import nicelee.bilibili.util.CatalogUtil;
+import nicelee.bilibili.util.DynamicsDB;
 
 /**
  * 针对以下url类型
@@ -135,14 +135,15 @@ public class URL4UPAllParser extends AbstractPageQueryParser<VideoInfo> {
 				if(jumpUrl.startsWith("https://www.bilibili.com/cheese/"))
 					continue;
 				totalCount++;
-				CatalogUtil.addAndSave(spaceID, bvid);
+				// catalog tracking moved to DynamicsDB
 				// skip if already in repo
 				if (RepoUtil.isBvInRepo(bvid)) { knownCount++; continue; }
 				map.putAll(convertVideoToClipMap(bvid, (page - 1) * API_PMAX + i + 1, videoFormat,
 						getVideoLink));
 			}
-			// if entire page is known, no more new content ahead (newest-first order)
-			return totalCount == 0 || knownCount < totalCount;
+			// if all bvids on this page are already known, stop pagination
+			if (knownCount == totalCount && totalCount > 0) return false;
+			return true;
 		} catch (Exception e) {
 			 e.printStackTrace();
 			return false;

@@ -12,4 +12,5 @@
 	<classpathentry kind="lib" path="libs/javax.mail-1.6.2.jar"/>
 	<classpathentry kind="lib" path="libs/jaf-1.1.1-activation.jar"/>
 	<classpathentry kind="output" path="bin"/>
+	<classpathentry kind="lib" path="libs/h2-2.2.224.jar"/>
 </classpath>

@@ -7,6 +7,7 @@ import nicelee.bilibili.enums.StatusEnum;
 import nicelee.bilibili.exceptions.BilibiliError;
 import nicelee.bilibili.parsers.InputParser;
 import nicelee.bilibili.util.CmdUtil;
+import nicelee.bilibili.util.DynamicsDB;
 import nicelee.bilibili.util.Logger;
 import nicelee.bilibili.util.RepoUtil;
 import nicelee.bilibili.util.ResourcesUtil;

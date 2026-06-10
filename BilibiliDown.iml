@@ -8,6 +8,7 @@
       <src_folder value="file://$MODULE_DIR$/src" expected_position="1" />
       <src_folder value="file://$MODULE_DIR$/src-launcher" expected_position="2" />
     </src_description>
+      <orderEntry type="module-library"><library><CLASSES><root url="jar://$MODULE_DIR$/libs/h2-2.2.224.jar!/" /></CLASSES><JAVADOC /></library></orderEntry>
   </component>
   <component name="NewModuleRootManager">
     <output url="file://$MODULE_DIR$/bin" />
@@ -54,5 +55,6 @@
         <SOURCES />
       </library>
     </orderEntry>
+      <orderEntry type="module-library"><library><CLASSES><root url="jar://$MODULE_DIR$/libs/h2-2.2.224.jar!/" /></CLASSES><JAVADOC /></library></orderEntry>
   </component>
 </module>

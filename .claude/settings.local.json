@@ -29,7 +29,32 @@
       "Bash(unzip -p INeedBiliAV_v6.41.jar nicelee/ui/item/MJMenuBar.class)",
       "Bash(unzip -p INeedBiliAV.jar nicelee/ui/item/MJMenuBar.class)",
       "Bash(unzip -p \"F:/WorkSpace/BilibiliDown/release/INeedBiliAV_v6.41.jar\" nicelee/ui/item/MJMenuBar.class)",
-      "Bash(rm -rf _pkg _s.txt)"
+      "Bash(rm -rf _pkg _s.txt)",
+      "Bash(javap -c -p \"F:\\\\WorkSpace\\\\BilibiliDown\\\\bin\\\\nicelee\\\\bilibili\\\\util\\\\HttpRequestUtil.class\")",
+      "Bash(rm -rf _pkg _s.txt _err.txt)",
+      "Bash(javac -encoding UTF-8 -cp _pkg -d _pkg @_s.txt)",
+      "Bash(unzip -p \"F:/WorkSpace/BilibiliDown/release/INeedBiliAV_v6.41.jar\" nicelee/ui/thread/MonitoringThread.class)",
+      "Bash(find _pkg -name \"*.java\")",
+      "Bash(javac -encoding UTF-8 -nowarn -cp _pkg -d _pkg @_s.txt)",
+      "PowerShell(Get-Content \"F:\\\\WorkSpace\\\\BilibiliDown\\\\src\\\\nicelee\\\\ui\\\\FrameMain.java\" -Encoding utf8 | Select-Object -Index 258, 259, 260 | ForEach-Object { $_ -replace \"`t\", \"[TAB]\" })",
+      "PowerShell(Get-Content \"F:\\\\WorkSpace\\\\BilibiliDown\\\\src\\\\nicelee\\\\ui\\\\FrameMain.java\" -Encoding utf8 | Select-Object -Index 281, 282, 283, 284, 285, 286, 287 | ForEach-Object { \"'$_'\" })",
+      "PowerShell(Get-Content \"F:\\\\WorkSpace\\\\BilibiliDown\\\\src\\\\nicelee\\\\ui\\\\thread\\\\RealTimeDownloadThread.java\" -Encoding utf8 | Select-Object -Index 168, 169, 170 | ForEach-Object { \"'$_'\" })",
+      "PowerShell(Get-Content \"F:\\\\WorkSpace\\\\BilibiliDown\\\\src\\\\nicelee\\\\bilibili\\\\util\\\\batchdownload\\\\BatchDownload.java\" -Encoding utf8 | Select-Object -Index 363, 364, 365 | ForEach-Object { \"'$_'\" })",
+      "PowerShell(Get-Content \"F:\\\\WorkSpace\\\\BilibiliDown\\\\src\\\\nicelee\\\\bilibili\\\\util\\\\batchdownload\\\\BatchDownload.java\" -Encoding utf8 | Select-Object -Index 383, 384, 385, 386, 388, 389, 390, 391 | ForEach-Object { \"'$_'\" })",
+      "PowerShell(Get-Content \"F:\\\\WorkSpace\\\\BilibiliDown\\\\src\\\\nicelee\\\\bilibili\\\\util\\\\batchdownload\\\\BatchDownload.java\" -Encoding utf8 | Select-Object -Index 402, 403, 404, 405 | ForEach-Object { \"'$_'\" })",
+      "Bash(javac -version)",
+      "Bash(javac -d /tmp/build -cp \"lib/*;release/INeedBiliAV.jar\" -sourcepath src src/nicelee/ui/FrameMain.java src/nicelee/bilibili/util/batchdownload/BatchDownload.java src/nicelee/ui/thread/RealTimeDownloadThread.java)",
+      "Bash(javac -encoding utf8 -d /tmp/build -cp \"lib/*;release/INeedBiliAV.jar\" -sourcepath src src/nicelee/ui/FrameMain.java src/nicelee/bilibili/util/batchdownload/BatchDownload.java src/nicelee/ui/thread/RealTimeDownloadThread.java)",
+      "Bash(echo \"javac=$?\")",
+      "Bash(javac -encoding UTF-8 -cp _pkg -d _pkg _pkg/nicelee/ui/thread/RealTimeDownloadThread.java _pkg/nicelee/ui/item/MJMenuBar.java)",
+      "Bash(javac -encoding UTF-8 -cp _pkg -d _pkg _pkg/nicelee/ui/item/MJMenuBar.java)",
+      "Bash(cp -r src/. _pkg/)",
+      "Bash(javac -encoding UTF-8 -cp _pkg -d _pkg _pkg/nicelee/ui/thread/RealTimeDownloadThread.java _pkg/nicelee/ui/item/MJMenuBar.java _pkg/nicelee/ui/item/DownloadInfoPanel.java)",
+      "Bash(javac -encoding UTF-8 -cp _pkg -d _pkg _pkg/nicelee/ui/item/MJMenuBar.java _pkg/nicelee/ui/thread/RealTimeDownloadThread.java)",
+      "Bash(unzip -l \"F:/WorkSpace/BilibiliDown/release/INeedBiliAV_v6.41.jar\")",
+      "Bash(curl -L -o \"F:/WorkSpace/BilibiliDown/libs/h2-2.2.224.jar\" \"https://repo1.maven.org/maven2/com/h2database/h2/2.2.224/h2-2.2.224.jar\")",
+      "Bash(cp -f \"F:/WorkSpace/BilibiliDown/INeedBiliAV_v6.41.jar\" \"F:/WorkSpace/BilibiliDown/release/\")",
+      "Bash(cp -f \"F:/WorkSpace/BilibiliDown/INeedBiliAV_v6.41.jar\" \"F:/WorkSpace/BilibiliDown/release/INeedBiliAV.jar\")"
     ]
   }
 }

@@ -27,6 +27,7 @@ import nicelee.bilibili.util.HttpCookies;
 import nicelee.bilibili.util.RepoUtil;
 import nicelee.bilibili.util.Logger;
 import nicelee.bilibili.util.ResourcesUtil;
+import nicelee.bilibili.util.DynamicsDB;
 import nicelee.bilibili.util.SysUtil;
 import nicelee.ui.item.MJTitleBar;
 import nicelee.ui.thread.BatchDownloadRbyRThread;
@@ -121,6 +122,7 @@ public class FrameMain extends JFrame {
 		if (Global.saveToRepo) {
 			RepoUtil.init(false);
 		}
+		DynamicsDB.init();
 		// scan for incomplete .part files
 		scanPartFilesAndResume();
 //		FrameQRCode qr = new FrameQRCode("https://www.bilibili.com/");
