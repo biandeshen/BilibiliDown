@@ -55,14 +55,6 @@ public class RealTimeDownloadThread extends Thread {
 					Logger.println("实时下载进行中");
 					File f = ResourcesUtil.search(configFilePath);
 					checkValid(f);
-					// skip if file unchanged since last cycle
-					long currentMtime = f.lastModified();
-					Long prevMtime = configLastModified.get(configFilePath);
-					if (prevMtime != null && prevMtime == currentMtime) {
-						Logger.println("config unchanged, skip: " + configFilePath);
-						continue;
-					}
-					configLastModified.put(configFilePath, currentMtime);
 					List<BatchDownload> bds = new BatchDownloadsBuilder(new FileInputStream(f)).Build();
 					BatchDownload.replaceVideoWithDynamic(bds);
 					Logger.println("实时下载进行中。。。。。");
