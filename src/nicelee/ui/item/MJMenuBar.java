@@ -17,6 +17,8 @@ import javax.swing.event.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -370,7 +372,7 @@ public class MJMenuBar extends JMenuBar {
 					JOptionPane.showMessageDialog(frame, "没有待确认的大文件", "提示", JOptionPane.INFORMATION_MESSAGE);
 					return;
 				}
-				JDialog dialog = new JDialog(frame, "大文件下载", true);
+				JDialog dialog = new JDialog(frame, "大文件下载", false);
 				dialog.setSize(650, 500);
 				dialog.setLocationRelativeTo(frame);
 				JPanel dPanel = new JPanel(new BorderLayout(5, 5));
@@ -414,14 +416,23 @@ public class MJMenuBar extends JMenuBar {
 						}
 						idx++;
 					}
+					batchDownload.setEnabled(true);
 					dialog.dispose();
 					updateLargeFileDownloadBadge(largeFileDownload);
 				});
 				cancelBtn.addActionListener(ev -> {
+					batchDownload.setEnabled(true);
 					dialog.dispose();
 					updateLargeFileDownloadBadge(largeFileDownload);
 				});
+				dialog.addWindowListener(new WindowAdapter() {
+					@Override
+					public void windowClosing(WindowEvent e) {
+						batchDownload.setEnabled(true);
+					}
+				});
 				dialog.add(dPanel);
+				batchDownload.setEnabled(false);
 				dialog.setVisible(true);
 			}
 		});

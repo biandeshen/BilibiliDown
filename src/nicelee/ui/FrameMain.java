@@ -33,6 +33,10 @@ import nicelee.ui.thread.BatchDownloadRbyRThread;
 import nicelee.ui.thread.CookieRefreshThread;
 import nicelee.ui.thread.LoginThread;
 import nicelee.ui.thread.MonitoringThread;
+import nicelee.ui.thread.DownloadRunnable;
+import nicelee.bilibili.INeedAV;
+import nicelee.bilibili.model.ClipInfo;
+import nicelee.bilibili.model.VideoInfo;
 
 public class FrameMain extends JFrame {
 
@@ -252,7 +256,7 @@ public class FrameMain extends JFrame {
 		}
 	}
 
-	// Scan for .part files on startup and offer to clean up
+	// Scan for .part files on startup and offer to resume or clean up
 	private static void scanPartFilesAndResume() {
 		File downloadDir = new File(Global.savePath);
 		if (!downloadDir.exists()) return;
@@ -271,7 +275,7 @@ public class FrameMain extends JFrame {
 			sb.append("  ").append(name).append("\n");
 		}
 		if (partFiles.size() > 8) sb.append("  ... and " + (partFiles.size() - 8) + " more\n");
-		sb.append("\nKeep these files for resume?\n(No = delete all .part files)");
+		sb.append("\nYes = Resume downloads, No = Delete .part files, Cancel = Keep");
 		
 		int r = javax.swing.JOptionPane.showConfirmDialog(null, sb.toString(),
 			"Incomplete Downloads", javax.swing.JOptionPane.YES_NO_CANCEL_OPTION, javax.swing.JOptionPane.QUESTION_MESSAGE);

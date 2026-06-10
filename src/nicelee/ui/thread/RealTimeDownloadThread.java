@@ -32,10 +32,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class RealTimeDownloadThread extends Thread {
-	
+
 	List<String> configFilePaths;
 	private Map<String, Long> configLastModified = new HashMap<>();
-	
+
 	public RealTimeDownloadThread(List<String> configFiles) {
 		configFilePaths = new ArrayList<>();
 		this.setName("Thread-RealTimeDownload");
@@ -44,9 +44,9 @@ public class RealTimeDownloadThread extends Thread {
 			configFilePaths.add(configFilePath);
 		}
 	}
-	
+
 	final Pattern pagePattern = Pattern.compile("p=[0-9]+$");
-	
+
 	@Override
 	public void run() {
 		while (!Thread.currentThread().isInterrupted()) {  // 添加无限循环
@@ -61,59 +61,8 @@ public class RealTimeDownloadThread extends Thread {
 					Logger.println(bds);
 					for (BatchDownload batch : bds) {
 						Logger.printf("[url:%s] 任务开始", batch.getUrl());
-						INeedAV ina = new INeedAV();
-						String validStr = ina.getValidID(batch.getUrl());
-						Logger.println(validStr);
-						Matcher m = pagePattern.matcher(validStr);
-						boolean isPageable = true;
-						if (!m.find()) isPageable = false;
-						else validStr = validStr.replaceFirst("p=[0-9]+$", "");
-						int page = batch.getStartPage();
-						boolean stopFlag = false;
-						while (!stopFlag) {
-							if (!isPageable && page >= 2) break;
-							String sp = validStr + " p=" + page;
-							VideoInfo avInfo = null;
-							try {
-								avInfo = ina.getVideoDetail(sp, Global.downloadFormat, false);
-							} catch (Exception e) {
-								e.printStackTrace();
-								break;
-							}
-							Collection<ClipInfo> clips = avInfo.getClips().values();
-							if (clips.size() == 0) break;
-							Logger.printf("当前url: %s ,page: %d, 分页查询开始进行", batch.getUrl(), page);
-							for (ClipInfo clip : clips) {
-								// 判断是否要停止[url:{url}] 对应的任务
-								if (batch.matchStopCondition(clip, page)) {
-									// 判断边界BV是否要下载
-									if (batch.isIncludeBoundsBV() && batch.matchDownloadCondition(clip, page)) {
-										addTask(clip);
-										DownloadRunnable downThread = new DownloadRunnable(avInfo, clip,
-										                                                   VideoQualityEnum.getQN(Global.menu_qn));
-										Global.queryThreadPool.execute(downThread);
-									}
-									stopFlag = true;
-									break;
-								}
-								// 判断是否要下载
-								if (batch.matchDownloadCondition(clip, page)) {
-									addTask(clip);
-									DownloadRunnable downThread = new DownloadRunnable(avInfo, clip,
-									                                                   VideoQualityEnum.getQN(Global.menu_qn));
-									Global.queryThreadPool.execute(downThread);
-								}
-							}
-							Logger.printf("当前url: %s ,page: %d, 分页查询完毕", batch.getUrl(), page);
-							page++;
-							Thread.sleep(Global.sleepBetweenPages);
-						}
-						Thread.sleep(Global.sleepBetweenBatches);
+						BatchDownload.processBatchEntry(batch);
 						Logger.printf("[url:%s] 任务完毕", batch.getUrl());
-						//if (batch.isAlertAfterMissionComplete()) {
-						//	showMessageDialog(null, "url:" + batch.getUrl(), "任务完毕!! " + batch.getRemark(),
-						//	                  JOptionPane.INFORMATION_MESSAGE);
-						//}
 					}
 				}
 				// 每次完整执行完for循环后等待30分钟
@@ -144,8 +93,8 @@ public class RealTimeDownloadThread extends Thread {
 		}
 		Logger.println("实时下载运行完毕");
 	}
-	
-	
+
+
 	public void checkValid(File f) throws IOException, URISyntaxException {
 		if (f == null || !f.exists()) {
 			String docsUrl = "https://nICEnnnnnnnLee.github.io/BilibiliDown/guide/advanced/quick-batch-download";
@@ -165,10 +114,10 @@ public class RealTimeDownloadThread extends Thread {
 			throw new RuntimeException("配置文件`" + f.getAbsolutePath() + "`不存在");
 		}
 	}
-	
+
 	public void addTask(ClipInfo clip) {
 	}
-	
+
 	public void showMessageDialog(Component parentComponent, String message, String title, int messageType) throws HeadlessException {
 		JOptionPane.showMessageDialog(parentComponent, message, title, messageType);
 	}

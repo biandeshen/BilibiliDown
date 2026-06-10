@@ -10,6 +10,7 @@ import nicelee.bilibili.enums.StatusEnum;
 import nicelee.bilibili.util.Logger;
 import nicelee.ui.Audio;
 import nicelee.ui.Global;
+import nicelee.ui.SysTray;
 import nicelee.ui.item.DownloadInfoPanel;
 
 public class MonitoringThread extends Thread {
@@ -191,8 +192,11 @@ public class MonitoringThread extends Thread {
 			Global.downloadTab.refreshStatus(totalTask, activeTask + pauseTaskCanRetry, pauseTask - pauseTaskCanRetry, doneTask, queuingTask);
 			//Global.activeTask = activeTask;
 			//Logger.printf("lastActiveTaskCount: %d, activeTask: %d\n", lastActiveTaskCount, activeTask);
-			if(Global.playSoundAfterMissionComplete && lastActiveTaskCount > 0 && activeTask == 0 && pauseTaskCanRetry == 0)
-				Audio.play();
+			if(lastActiveTaskCount > 0 && activeTask == 0 && pauseTaskCanRetry == 0) {
+				if(Global.playSoundAfterMissionComplete)
+					Audio.play();
+				SysTray.showNotification("BilibiliDown", "所有下载任务已完成");
+			}
 			lastActiveTaskCount = activeTask;
 			try {
 				Thread.sleep(1500);
