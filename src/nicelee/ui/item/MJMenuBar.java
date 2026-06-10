@@ -256,7 +256,7 @@ public class MJMenuBar extends JMenuBar {
 		// 修改原有的一键下载配置菜单创建代码
 		// 将原来的 dBatchDownMenuItem 创建代码替换为:
 		JMenuItem configSelectItem = new JMenuItem("一键下载配置");
-		configSelectItem.addActionListener(e -> showConfigSelectDialog(configFiles, false));
+		configSelectItem.addActionListener(e -> showConfigSelectDialog(configFiles));
 
 		JMenu dUpdateMenuItem = new MJMenuWithRadioGroupBuilder("更新源选择", Global.updateSourceAvailable.split("\\|")) {
 			@Override
@@ -329,7 +329,7 @@ public class MJMenuBar extends JMenuBar {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if (selectedConfigFiles.isEmpty()) {
-					showConfigSelectDialog(configFiles, false);
+					showConfigSelectDialog(configFiles);
 				}
 				if (selectedConfigFiles.isEmpty()) return;
 				for (String cfg : selectedConfigFiles) {
@@ -396,19 +396,17 @@ public class MJMenuBar extends JMenuBar {
 						if (cbs.get(idx).isSelected()) {
 							it.remove();
 							final Global.PendingLargeFile f = plf;
-							new Thread(() -> {
+							javax.swing.SwingUtilities.invokeLater(() -> {
 								try {
 									INeedAV ina = new INeedAV();
 									DownloadInfoPanel dp = new DownloadInfoPanel(f.clip, f.qn);
 									dp.initDownloadParams(ina, f.urlQuery, f.avid + "-" + f.realQN, f.formattedTitle, f.realQN);
 									Global.downloadTaskList.put(dp, ina.getDownloader());
-									javax.swing.SwingUtilities.invokeLater(() -> {
-										Global.downloadTab.getJpContent().add(dp);
-										Global.downloadTab.getJpContent().revalidate();
-									});
+									Global.downloadTab.getJpContent().add(dp);
+									Global.downloadTab.getJpContent().revalidate();
 									Global.queryThreadPool.execute(new DownloadRunnableInternal(dp, System.currentTimeMillis(), false, 0));
 								} catch (Exception ex) { ex.printStackTrace(); }
-							}, "LargeDL-" + f.avid).start();
+							});
 						}
 						idx++;
 					}
@@ -430,7 +428,7 @@ public class MJMenuBar extends JMenuBar {
 				Logger.println(m);
 				if (m == 0) {
 					if (selectedConfigFiles.isEmpty()) {
-						showConfigSelectDialog(configFiles, false);
+						showConfigSelectDialog(configFiles);
 					}
 					if (selectedConfigFiles.isEmpty()) return;
 					for (String cfg : selectedConfigFiles) {
@@ -693,7 +691,7 @@ public class MJMenuBar extends JMenuBar {
 	}
 	
 	
-	private void showConfigSelectDialog(List<String> configFiles, boolean singleSelect) {
+	private void showConfigSelectDialog(List<String> configFiles) {
 		JDialog dialog = new JDialog(frame, "选择配置文件", true);
 		dialog.setSize(550, 520);
 		dialog.setLocationRelativeTo(frame);

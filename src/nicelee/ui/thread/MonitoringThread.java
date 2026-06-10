@@ -42,7 +42,7 @@ public class MonitoringThread extends Thread {
 					if(file != null) {
 						String path = file.getAbsolutePath();
 						if(Global.doRenameAfterComplete && downloader.currentStatus() == StatusEnum.SUCCESS) {
-							path = AV_PATTERN.matcher(path).replaceFirst(formattedTitle);
+							path = AV_PATTERN.matcher(path).replaceFirst(java.util.regex.Matcher.quoteReplacement(formattedTitle));
 						}
 						dp.getLbFileName().setText(path);
 						dp.getLbFileName().setToolTipText(path);
@@ -188,7 +188,13 @@ public class MonitoringThread extends Thread {
 			if (doneTask > 0) {
 				java.util.Iterator<Entry<DownloadInfoPanel, IDownloader>> it = map.entrySet().iterator();
 				while (it.hasNext()) {
-					if (it.next().getValue().currentStatus() == StatusEnum.SUCCESS) {
+					java.util.Map.Entry<DownloadInfoPanel, IDownloader> entry = it.next();
+					if (entry.getValue().currentStatus() == StatusEnum.SUCCESS) {
+						javax.swing.SwingUtilities.invokeLater(() -> {
+							Global.downloadTab.getJpContent().remove(entry.getKey());
+							Global.downloadTab.getJpContent().revalidate();
+							Global.downloadTab.getJpContent().repaint();
+						});
 						it.remove();
 					}
 				}

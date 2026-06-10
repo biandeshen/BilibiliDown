@@ -67,6 +67,7 @@ public class MigrateDownloadDir {
 			for (String uid : uids) {
 				try {
 					String url = "https://api.bilibili.com/x/space/acc/info?mid=" + uid;
+					url += API.genDmImgParams();
 					url = API.encWbi(url);
 					String json = util.getContent(url, headers.getCommonHeaders("api.bilibili.com"),
 							HttpCookies.globalCookiesWithFingerprint());

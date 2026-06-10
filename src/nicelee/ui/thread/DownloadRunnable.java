@@ -102,6 +102,7 @@ public class DownloadRunnable implements Runnable {
 		int realQN;
 		if(!ResourcesUtil.isPicture(avid)){
 			urlQuery = iNeedAV.getInputParser(avid).getVideoLink(avid, cid, qn, Global.downloadFormat); //该步含网络查询， 可能较为耗时
+			if (urlQuery == null) { Logger.println("无法获取下载链接: " + avid); return; }
 			realQN = iNeedAV.getInputParser(avid).getVideoLinkQN();
 			// large file -> put into pending list, not immediate download
 			if (Global.largeFileThreshold > 0 && !ResourcesUtil.isPicture(avid) && urlQuery != null) {

@@ -48,7 +48,7 @@ public class BatchDownload implements Cloneable {
 				continue;
 			Matcher m = videoUrlPattern.matcher(batch.getUrl());
 			if (m.find()) {
-				String newUrl = batch.getUrl().replaceAll("/video.*", "/dynamic");
+				String newUrl = batch.getUrl().replaceAll("/video[/]?.*", "/dynamic");
 				Logger.println("将 /video 替换为 /dynamic: " + batch.getUrl() + " -> " + newUrl);
 				batch.setUrl(newUrl);
 			}
