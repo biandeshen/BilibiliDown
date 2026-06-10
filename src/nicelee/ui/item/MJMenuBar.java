@@ -66,6 +66,7 @@ public class MJMenuBar extends JMenuBar {
 		JMenuItem batchDownload = new JMenuItem("一键下载");
 		JMenuItem realTimeDownload = new JMenuItem("实时下载");
 		JMenuItem migrateDownload = new JMenuItem("整理下载文件");
+		JMenuItem largeFileDownload = new JMenuItem("大文件下载");
 		JMenuItem batchDownloadRbyR = new JMenuItem("按计划周期下载");
 		JMenuItem reloadConfig = new JMenuItem("重新加载配置");
 		JMenuItem reloadRepo = new JMenuItem("重新加载仓库");
@@ -254,10 +255,8 @@ public class MJMenuBar extends JMenuBar {
 		
 		// 修改原有的一键下载配置菜单创建代码
 		// 将原来的 dBatchDownMenuItem 创建代码替换为:
-		JMenu dBatchDownMenuItem = new JMenu("一键下载配置");
-		JMenuItem selectConfigItem = new JMenuItem("选择配置文件...");
-		selectConfigItem.addActionListener(e -> showConfigSelectDialog(configFiles, false));
-		dBatchDownMenuItem.add(selectConfigItem);
+		JMenuItem configSelectItem = new JMenuItem("一键下载配置");
+		configSelectItem.addActionListener(e -> showConfigSelectDialog(configFiles, false));
 
 		JMenu dUpdateMenuItem = new MJMenuWithRadioGroupBuilder("更新源选择", Global.updateSourceAvailable.split("\\|")) {
 			@Override
@@ -301,7 +300,7 @@ public class MJMenuBar extends JMenuBar {
 		configMenu.add(dForceReplaceHostMenuItem);
 		configMenu.add(dQNMenuItem);
 		configMenu.add(dQNQueryStrategyMenuItem);
-		configMenu.add(dBatchDownMenuItem);
+		configMenu.add(configSelectItem);
 		configMenu.add(dUpdateMenuItem);
 		configMenu.add(dFFmpegMenuItem);
 		configMenu.addSeparator();
@@ -357,6 +356,67 @@ public class MJMenuBar extends JMenuBar {
 								"整理结果", javax.swing.JOptionPane.INFORMATION_MESSAGE);
 					});
 				}, "MigrateThread").start();
+			}
+		});
+		// 大文件下载 - 弹窗选择后加入下载队列
+		largeFileDownload.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (Global.largeFilePendingList.isEmpty()) {
+					JOptionPane.showMessageDialog(frame, "没有待确认的大文件", "提示", JOptionPane.INFORMATION_MESSAGE);
+					return;
+				}
+				JDialog dialog = new JDialog(frame, "大文件下载", true);
+				dialog.setSize(650, 500);
+				dialog.setLocationRelativeTo(frame);
+				JPanel dPanel = new JPanel(new BorderLayout(5, 5));
+				dPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+				JPanel checkPanel = new JPanel();
+				checkPanel.setLayout(new BoxLayout(checkPanel, BoxLayout.Y_AXIS));
+				dPanel.add(new JScrollPane(checkPanel), BorderLayout.CENTER);
+				java.util.List<JCheckBox> cbs = new ArrayList<>();
+				for (Global.PendingLargeFile plf : Global.largeFilePendingList) {
+					String upName = plf.clip != null ? plf.clip.getUpName() : "";
+					String sizeStr = plf.estimatedSize > 1073741824L ? String.format("%.1fGB", plf.estimatedSize / 1073741824.0) : String.format("%.0fMB", plf.estimatedSize / 1048576.0);
+					JCheckBox cb = new JCheckBox("[" + sizeStr + "] " + (upName.isEmpty() ? "" : upName + " - ") + plf.avTitle);
+					cb.setSelected(true);
+					checkPanel.add(cb);
+					cbs.add(cb);
+				}
+				JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+				JButton okBtn = new JButton("添加到下载列表");
+				JButton cancelBtn = new JButton("取消");
+				btnPanel.add(okBtn); btnPanel.add(cancelBtn);
+				dPanel.add(btnPanel, BorderLayout.SOUTH);
+				okBtn.addActionListener(ev -> {
+					java.util.Iterator<Global.PendingLargeFile> it = Global.largeFilePendingList.iterator();
+					int idx = 0;
+					while (it.hasNext()) {
+						Global.PendingLargeFile plf = it.next();
+						if (cbs.get(idx).isSelected()) {
+							it.remove();
+							final Global.PendingLargeFile f = plf;
+							new Thread(() -> {
+								try {
+									INeedAV ina = new INeedAV();
+									DownloadInfoPanel dp = new DownloadInfoPanel(f.clip, f.qn);
+									dp.initDownloadParams(ina, f.urlQuery, f.avid + "-" + f.realQN, f.formattedTitle, f.realQN);
+									Global.downloadTaskList.put(dp, ina.getDownloader());
+									javax.swing.SwingUtilities.invokeLater(() -> {
+										Global.downloadTab.getJpContent().add(dp);
+										Global.downloadTab.getJpContent().revalidate();
+									});
+									Global.queryThreadPool.execute(new DownloadRunnableInternal(dp, System.currentTimeMillis(), false, 0));
+								} catch (Exception ex) { ex.printStackTrace(); }
+							}, "LargeDL-" + f.avid).start();
+						}
+						idx++;
+					}
+					dialog.dispose();
+				});
+				cancelBtn.addActionListener(ev -> dialog.dispose());
+				dialog.add(dPanel);
+				dialog.setVisible(true);
 			}
 		});
 		// 按计划一键下载
@@ -673,7 +733,7 @@ public class MJMenuBar extends JMenuBar {
 					continue;
 				JCheckBox cb = new JCheckBox(name);
 				cb.setAlignmentX(Component.LEFT_ALIGNMENT);
-				if (singleSelect && checkBoxes.isEmpty()) cb.setSelected(true);
+				cb.setSelected(true); // default all selected
 				checkPanel.add(cb);
 				checkBoxes.add(cb);
 			}

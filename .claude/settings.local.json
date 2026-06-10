@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(Get-ChildItem -Path \"F:\\\\WorkSpace\\\\BilibiliDown\" -Depth 0)",
+      "Bash(Format-Table Name, Mode -AutoSize)",
+      "Bash(Get-ChildItem *)",
+      "Bash(python3 *)",
+      "PowerShell(& \"F:\\\\WorkSpace\\\\BilibiliDown\\\\build.bat\")",
+      "Bash(javac -encoding UTF-8 -cp \"F:/WorkSpace/BilibiliDown/lib/*;F:/WorkSpace/BilibiliDown/bin\" -d \"F:/WorkSpace/BilibiliDown/bin\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/RealTimeDownloadThread.java\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/MonitoringThread.java\")",
+      "Bash(javac -encoding UTF-8 -Xmaxerrs 500 -cp \"F:/WorkSpace/BilibiliDown/lib/*\" -d \"F:/WorkSpace/BilibiliDown/bin\" @\"F:/WorkSpace/BilibiliDown/bin\")",
+      "Bash(javac -encoding UTF-8 -Xmaxerrs 500 -cp \"F:/WorkSpace/BilibiliDown/lib/*\" -d /dev/null \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/RealTimeDownloadThread.java\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/MonitoringThread.java\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/DownloadRunnable.java\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/Global.java\")",
+      "Bash(javac -encoding UTF-8 -cp \"F:/WorkSpace/BilibiliDown/lib/*;F:/WorkSpace/BilibiliDown/bin\" -d \"F:/WorkSpace/BilibiliDown/bin\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/RealTimeDownloadThread.java\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/MonitoringThread.java\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/DownloadRunnable.java\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/StreamManager.java\")",
+      "Bash(javac -encoding UTF-8 -nowarn -cp \"F:/WorkSpace/BilibiliDown/lib/*;F:/WorkSpace/BilibiliDown/bin\" -d \"F:/WorkSpace/BilibiliDown/bin\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/RealTimeDownloadThread.java\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/MonitoringThread.java\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/DownloadRunnable.java\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/StreamManager.java\")",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(javac -encoding UTF-8 -nowarn -cp \"F:/WorkSpace/BilibiliDown/lib/*;F:/WorkSpace/BilibiliDown/bin\" -d \"F:/WorkSpace/BilibiliDown/bin\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/MonitoringThread.java\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/DownloadRunnable.java\" \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/thread/StreamManager.java\")",
+      "Bash(echo \"Exit=$?\")",
+      "Bash(java -jar INeedBiliAV_v6.41.jar)",
+      "Bash(xargs rm -f)",
+      "Bash(jar cvfe *)",
+      "Bash(jar tf *)",
+      "Bash(javac -encoding UTF-8 -nowarn -cp \"F:/WorkSpace/BilibiliDown/lib/*\" -d /tmp/test_mj \"F:/WorkSpace/BilibiliDown/src/nicelee/ui/item/MJMenuBar.java\")",
+      "Bash(javac -encoding UTF-8 -nowarn -cp \".\" ../_s.txt)",
+      "Bash(javac -encoding UTF-8 -cp \"_pkg\" -d _pkg @_s.txt)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(javac -encoding UTF-8 -cp \"_pkg;libs/*\" -d _pkg _pkg/nicelee/ui/item/MJMenuBar.java)",
+      "Read(//f/WorkSpace/**)",
+      "Bash(cp -f INeedBiliAV_v6.41.jar release/)",
+      "Bash(unzip -p INeedBiliAV_v6.41.jar nicelee/ui/item/MJMenuBar.class)",
+      "Bash(unzip -p INeedBiliAV.jar nicelee/ui/item/MJMenuBar.class)",
+      "Bash(unzip -p \"F:/WorkSpace/BilibiliDown/release/INeedBiliAV_v6.41.jar\" nicelee/ui/item/MJMenuBar.class)",
+      "Bash(rm -rf _pkg _s.txt)"
+    ]
+  }
+}

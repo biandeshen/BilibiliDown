@@ -121,7 +121,6 @@ public class DownloadRunnable implements Runnable {
 					plf.clip = clip;
 					plf.avInfo = avInfo;
 					Global.largeFilePendingList.add(plf);
-					SwingUtilities.invokeLater(() -> Global.downloadTab.refreshLargeFileList());
 					Logger.println("Large file pending: " + clip.getAvTitle());
 					return;
 				}

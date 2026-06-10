@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import nicelee.bilibili.API;
 import nicelee.bilibili.annotations.Bilibili;
 import nicelee.bilibili.model.ClipInfo;
 import nicelee.bilibili.model.VideoInfo;
@@ -80,6 +81,8 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 					+ "?host_mid=" + spaceID
 					+ (currentOffset.isEmpty() ? "" : "&offset=" + currentOffset)
 					+ "&timezone_offset=-480";
+				url += API.genDmImgParams();
+				url = API.encWbi(url);
 			HashMap<String, String> headers = new HttpHeaders().getCommonHeaders("api.bilibili.com");
 			headers.put("Referer", "https://space.bilibili.com/" + spaceID + "/dynamic");
 			headers.put("Origin", "https://space.bilibili.com/");
