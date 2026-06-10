@@ -9,11 +9,11 @@ import nicelee.bilibili.exceptions.BilibiliError;
 import nicelee.bilibili.model.ClipInfo;
 import nicelee.bilibili.model.VideoInfo;
 import nicelee.bilibili.util.CmdUtil;
+import nicelee.bilibili.util.DynamicsDB;
 import nicelee.bilibili.util.RepoUtil;
 import nicelee.bilibili.util.ResourcesUtil;
 import nicelee.bilibili.util.custom.System;
 import nicelee.ui.Global;
-import javax.swing.SwingUtilities;
 import nicelee.bilibili.util.Logger;
 import nicelee.bilibili.util.HttpHeaders;
 import nicelee.bilibili.util.ResourcesUtil;
@@ -115,13 +115,9 @@ public class DownloadRunnable implements Runnable {
 					if (sz > 0) estSize += sz;
 				}
 				if (estSize > Global.largeFileThreshold) {
-					Global.PendingLargeFile plf = new Global.PendingLargeFile(clip.getAvTitle(), estSize);
-					plf.avid = avid; plf.cid = cid; plf.qn = qn; plf.realQN = realQN; plf.page = page;
-					plf.formattedTitle = CmdUtil.genFormatedName(avInfo, clip, realQN);
-					plf.urlQuery = urlQuery;
-					plf.clip = clip;
-					plf.avInfo = avInfo;
-					Global.largeFilePendingList.add(plf);
+					String formattedTitle = CmdUtil.genFormatedName(avInfo, clip, realQN);
+					DynamicsDB.insertLargeFile(avid, clip.getUpName(), avid, clip.getAvTitle(),
+						clip.getPicPreview(), estSize, urlQuery, qn, formattedTitle);
 					Logger.println("Large file pending: " + clip.getAvTitle());
 					return;
 				}

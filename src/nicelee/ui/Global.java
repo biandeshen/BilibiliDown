@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.swing.ImageIcon;
-import javax.swing.JCheckBox;
+
 import javax.swing.JTabbedPane;
 
 import nicelee.bilibili.annotations.Config;
@@ -50,7 +50,7 @@ public class Global {
 	public static boolean autoDisplayPreviewPic;
 	@Config(key = "bilibili.menu.tab.promptBeforeCloseAllTabs", note = "点击【关闭全部Tab页】后，弹出确认框", defaultValue = "true", valids = { "true", "false" })
 	public static boolean promptBeforeCloseAllTabs;
-	
+
 	public static ImageIcon backgroundImg;
 	public static FrameWaiting frWaiting;
 	public static FrameQRCode qr; // 二维码图片显示界面
@@ -76,7 +76,7 @@ public class Global {
 	public static int[] videoCodecPriority = {7, 12, 13};
 	@Config(key = "bilibili.dash.video.codec.priority.map", defaultValue = "80:7, 12, 13| 64:7, 12, 13", note = "视频编码优先级(区分清晰度),AV1:13,HEVC:12,AVC:7,随意-1")
 	public static HashMap<Integer, int[]> videoCodecPriorityMap;
-	@Config(key = "bilibili.dash.audio.quality.priority", defaultValue = "30280, 30232, 30216, -1, 30251, 30250", 
+	@Config(key = "bilibili.dash.audio.quality.priority", defaultValue = "30280, 30232, 30216, -1, 30251, 30250",
 			note = "音频编码优先级,30216:64K, 30232:132K, 30280:192K, 随意-1")
 	public static int[] audioQualityPriority = {30280, 30232, 30216, -1};
 	@Config(key = "bilibili.dash.checkUrl", note = "查询DASH方式的下载链接时，检查链接有效性", defaultValue = "false", valids = { "true", "false" })
@@ -112,22 +112,6 @@ public class Global {
 	public static JTabbedPane tabs; // 下载显示界面
 	public static TabDownload downloadTab; // 下载显示界面
 	public static ConcurrentHashMap<DownloadInfoPanel, IDownloader> downloadTaskList = new ConcurrentHashMap<DownloadInfoPanel, IDownloader>();
-	// large file pending list
-	public static java.util.concurrent.ConcurrentLinkedQueue<PendingLargeFile> largeFilePendingList = new java.util.concurrent.ConcurrentLinkedQueue<>();
-	
-	public static class PendingLargeFile {
-		public String avTitle, avid, cid, formattedTitle, urlQuery;
-		public long estimatedSize;
-		public int qn, realQN, page;
-		public nicelee.bilibili.model.ClipInfo clip;
-		public nicelee.bilibili.model.VideoInfo avInfo;
-		public JCheckBox checkBox;
-		public PendingLargeFile(String avTitle, long estimatedSize) {
-			this.avTitle = avTitle;
-			this.estimatedSize = estimatedSize;
-		}
-	}
-
 	@Config(key = "bilibili.download.multiThread.count", note = "单个下载任务开启线程数(0,1为不开启多线程)", defaultValue = "0")
 	public static int multiThreadCnt; // 多线程下载开启的线程数 0为不开启多线程下载
 	@Config(key = "bilibili.download.multiThread.minFileSize", note = "文件大小小于阈值(整数, 单位MB)，则不开启多线程下载", defaultValue = "0", multiply = 1024 * 1024)
@@ -180,11 +164,11 @@ public class Global {
 	public static String password;
 	@Config(key = "bilibili.user.delete", defaultValue = "true", valids = { "true", "false" })
 	public static boolean deleteUserFile;
-	@Config(key = "bilibili.user.login", note = "登录方式 qr/pwd/sms", defaultValue = "qr", valids = { "pwd", "qr", "sms" }) // note = "登录方式", 
+	@Config(key = "bilibili.user.login", note = "登录方式 qr/pwd/sms", defaultValue = "qr", valids = { "pwd", "qr", "sms" }) // note = "登录方式",
 	public static String loginType; // 登录方式
 	//@Config(key = "bilibili.user.login.pwd", defaultValue = "false", eq_true = "auto", valids = { "auto", "manual" })
 	//public static boolean pwdAutoLogin; // 使用用户名密码自动登录方式
-	//@Config(key = "bilibili.user.login.pwd.autoCaptcha", defaultValue = "false", valids = { "true", "false" })// note = "用户名密码登录时是否自动尝试解析验证码", 
+	//@Config(key = "bilibili.user.login.pwd.autoCaptcha", defaultValue = "false", valids = { "true", "false" })// note = "用户名密码登录时是否自动尝试解析验证码",
 	//public static boolean pwdAutoCaptcha; // 自动提取验证码
 
 	public static boolean needToLogin = false;
@@ -212,10 +196,10 @@ public class Global {
 	// FFMPEG 路径
 	@Config(key = "bilibili.ffmpegPath", note = "ffmpeg路径", defaultValue = "ffmpeg", pathType = "file")
 	public static String ffmpegPath;
-	@Config(key = "bilibili.dash.ffmpeg.command.merge", note = "ffmpeg音视频合并命令", 
+	@Config(key = "bilibili.dash.ffmpeg.command.merge", note = "ffmpeg音视频合并命令",
 			defaultValue = "{FFmpeg}, -i, {SavePath}{VideoName}, -i, {SavePath}{AudioName}, -c, copy, {SavePath}{DstName}")
 	public static String[] ffmpegCmd4Merge;
-	@Config(key = "bilibili.dash.ffmpeg.command.transAudioOnly", note = "ffmpeg音频转换命令", 
+	@Config(key = "bilibili.dash.ffmpeg.command.transAudioOnly", note = "ffmpeg音频转换命令",
 			defaultValue = "{FFmpeg}, -y, -i, {SavePath}{AudioName}, -vn, -c:a, copy, {SavePath}{DstName}")
 	public static String[] ffmpegCmd4AudioOnly;
 	@Config(key = "bilibili.dash.suffix4AudioOnly", note = "仅下载音频时的后缀名称(带.)", defaultValue = ".mp4")

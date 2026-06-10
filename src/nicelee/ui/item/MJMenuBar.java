@@ -27,23 +27,23 @@ import java.util.List;
 import java.util.regex.Matcher;
 
 public class MJMenuBar extends JMenuBar {
-	
+
 	/**
 	 *
 	 */
 	private static final long serialVersionUID = -344077300590858072L;
-	
+
 	private JFrame frame;
 	// int tabDownloadType; 	// 保存 从菜单栏批量下载的计划类型
 	String qnQualityPri;    // 保存 从菜单栏批量下载的优先清晰度选项
 	List<String> selectedConfigFiles = new ArrayList<>(); // 保存 从菜单栏一键下载的配置文件选项
-	
+
 	public MJMenuBar(JFrame frame) {
 		super();
 		this.frame = frame;
 		init();
 	}
-	
+
 	private void init() {
 		this.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 0));
 		/*
@@ -61,7 +61,7 @@ public class MJMenuBar extends JMenuBar {
 		this.add(aboutMenu);
 		//		Dimension dMenuBar = new Dimension(137, 23);
 		//		this.setPreferredSize(dMenuBar);
-		
+
 		/**
 		 * 创建二级 操作 子菜单
 		 */
@@ -69,7 +69,6 @@ public class MJMenuBar extends JMenuBar {
 		JMenuItem realTimeDownload = new JMenuItem("实时下载");
 		JMenuItem migrateDownload = new JMenuItem("整理下载文件");
 		JMenuItem largeFileDownload = new JMenuItem("大文件下载");
-		updateLargeFileDownloadBadge(largeFileDownload);
 		JMenuItem batchDownloadRbyR = new JMenuItem("按计划周期下载");
 		JMenuItem reloadConfig = new JMenuItem("重新加载配置");
 		JMenuItem reloadRepo = new JMenuItem("重新加载仓库");
@@ -77,7 +76,7 @@ public class MJMenuBar extends JMenuBar {
 		JMenuItem loadDownloading = new JMenuItem("加载下载任务");
 		JMenuItem closeAllMenuItem = new JMenuItem("关闭全部Tab页");
 		JMenuItem doMultiDownMenuItem = new JMenuItem("批量下载Tab页");
-		
+
 		JMenu loginRelated = new JMenu("登录相关");
 		JMenuItem logout = new JMenuItem("退出登录");
 		JMenuItem qrLogin = new JMenuItem("二维码登录");
@@ -91,7 +90,7 @@ public class MJMenuBar extends JMenuBar {
 		loginRelated.add(refreshCookie);
 		loginRelated.addSeparator();
 		loginRelated.add(logout);
-		
+
 		operMenu.add(batchDownload);
 		operMenu.add(realTimeDownload);
 		operMenu.addSeparator();
@@ -109,8 +108,8 @@ public class MJMenuBar extends JMenuBar {
 		operMenu.add(migrateDownload);
 		operMenu.add(largeFileDownload);
 		operMenu.add(batchDownloadRbyR);
-		
-		
+
+
 		/**
 		 * 创建二级 配置 子菜单
 		 */
@@ -125,27 +124,27 @@ public class MJMenuBar extends JMenuBar {
 		//				menuItems[Global.menu_plan].setSelected(true);
 		//			}
 		//		}.build();
-		
+
 		JMenu dUseRepoMenuItem = new MJMenuWithRadioGroupBuilder("下载前先查询记录?", "查询", "不查询") {
 			@Override
 			public void onItemSelected(int itemIndex, JRadioButtonMenuItem item) {
 				Global.useRepo = itemIndex == 0;
 				Logger.println("仓库功能开启:" + Global.useRepo);
 			}
-			
+
 			@Override
 			public void init(JRadioButtonMenuItem[] menuItems) {
 				int itemIndex = Global.useRepo ? 0 : 1;
 				menuItems[itemIndex].setSelected(true);
 			}
 		}.build();
-		
+
 		JMenu dDashDownTypeMenuItem = new MJMenuWithRadioGroupBuilder("下载模式(DASH)", "全部", "仅视频", "仅音频") {
 			@Override
 			public void onItemSelected(int itemIndex, JRadioButtonMenuItem item) {
 				Global.downloadMode = DownloadModeEnum.getModeEnum(itemIndex);
 			}
-			
+
 			@Override
 			public void init(JRadioButtonMenuItem[] menuItems) {
 				menuItems[Global.downloadMode.getMode()].setSelected(true);
@@ -157,7 +156,7 @@ public class MJMenuBar extends JMenuBar {
 				if (Global.reloadDownloadUrl) menuItems[1].setSelected(true);
 				else menuItems[0].setSelected(true);
 			}
-			
+
 			@Override
 			public void onItemSelected(int itemIndex, JRadioButtonMenuItem item) {
 				if (itemIndex == 0) {
@@ -175,27 +174,27 @@ public class MJMenuBar extends JMenuBar {
 				Global.forceReplaceUposHost = itemIndex == 0;
 				Logger.println("音视频链接强制替换host:" + Global.forceReplaceUposHost);
 			}
-			
+
 			@Override
 			public void init(JRadioButtonMenuItem[] menuItems) {
 				int itemIndex = Global.forceReplaceUposHost ? 0 : 1;
 				menuItems[itemIndex].setSelected(true);
 			}
 		}.build();
-		
+
 		List<String> qnSelections = new ArrayList<>();
 		for (VideoQualityEnum item : VideoQualityEnum.values()) {
 			qnSelections.add(item.getQuality());
 		}
 		JMenu dQNMenuItem = new MJMenuWithRadioGroupBuilder("优先清晰度", qnSelections) {
-			
+
 			@Override
 			public void onItemSelected(int itemIndex, JRadioButtonMenuItem item) {
 				qnQualityPri = item.getText();
 				Global.menu_qn = qnQualityPri;
 				Logger.println("优先清晰度(菜单)为: " + qnQualityPri);
 			}
-			
+
 			@Override
 			public void init(JRadioButtonMenuItem[] menuItems) {
 				for (JRadioButtonMenuItem item : menuItems) {
@@ -205,17 +204,17 @@ public class MJMenuBar extends JMenuBar {
 				}
 			}
 		}.build();
-		
+
 		String[] straOptions = {"tryNormalTypeFirst", "judgeTypeFirst", "returnFixedValue"};
 		String[] straOptionTips = {"先尝试普通类型，报错再尝试其它", "先判断类型再查询", "返回固定值"};
 		JMenu dQNQueryStrategyMenuItem = new MJMenuWithRadioGroupBuilder("可用清晰度查询策略", straOptionTips) {
-			
+
 			@Override
 			public void onItemSelected(int itemIndex, JRadioButtonMenuItem item) {
 				Global.infoQueryStrategy = straOptions[itemIndex];
 				Logger.println("可用清晰度查询策略为: " + straOptionTips[itemIndex]);
 			}
-			
+
 			@Override
 			public void init(JRadioButtonMenuItem[] menuItems) {
 				for (int i = 0; i < menuItems.length; i++) {
@@ -225,7 +224,7 @@ public class MJMenuBar extends JMenuBar {
 				}
 			}
 		}.build();
-		
+
 		File configDir = new File(ResourcesUtil.baseDirectory(), "config");
 		List<String> configFiles = new ArrayList<>();
 		configFiles.add(Global.batchDownloadConfigName);
@@ -257,7 +256,7 @@ public class MJMenuBar extends JMenuBar {
 		//		menuItems[0].setSelected(true);
 		//	}
 		//}.build();
-		
+
 		// 修改原有的一键下载配置菜单创建代码
 		// 将原来的 dBatchDownMenuItem 创建代码替换为:
 		JMenu configSelectMenu = new JMenu("一键下载配置");
@@ -274,9 +273,9 @@ public class MJMenuBar extends JMenuBar {
 			public void onItemSelected(int itemIndex, JRadioButtonMenuItem item) {
 				Global.updateSourceActive = item.getText();
 				Logger.println("当前使用的更新源切换为：" + Global.updateSourceActive);
-				
+
 			}
-			
+
 			@Override
 			public void init(JRadioButtonMenuItem[] menuItems) {
 				for (JRadioButtonMenuItem item : menuItems) {
@@ -293,7 +292,7 @@ public class MJMenuBar extends JMenuBar {
 				Global.ffmpegSourceActive = item.getText();
 				Logger.println("当前使用的ffmpeg源切换为：" + Global.ffmpegSourceActive);
 			}
-			
+
 			@Override
 			public void init(JRadioButtonMenuItem[] menuItems) {
 				for (JRadioButtonMenuItem item : menuItems) {
@@ -369,12 +368,14 @@ public class MJMenuBar extends JMenuBar {
 				}, "MigrateThread").start();
 			}
 		});
-		// 大文件下载 - 弹窗选择后加入下载队列
+		// 大文件下载 - 弹窗选择后加入下载队列 (从DB读取)
 		largeFileDownload.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				updateLargeFileDownloadBadge(largeFileDownload);
-				if (Global.largeFilePendingList.isEmpty()) {
+				java.util.List<DynamicsDB.LargeFileItem> pendingList = DynamicsDB.getPendingLargeFiles();
+				int count = pendingList.size();
+				largeFileDownload.setText(count > 0 ? "大文件下载 (" + count + ")" : "大文件下载");
+				if (pendingList.isEmpty()) {
 					JOptionPane.showMessageDialog(frame, "没有待确认的大文件", "提示", JOptionPane.INFORMATION_MESSAGE);
 					return;
 				}
@@ -387,31 +388,36 @@ public class MJMenuBar extends JMenuBar {
 				checkPanel.setLayout(new BoxLayout(checkPanel, BoxLayout.Y_AXIS));
 				dPanel.add(new JScrollPane(checkPanel), BorderLayout.CENTER);
 				java.util.List<JCheckBox> cbs = new ArrayList<>();
-				for (Global.PendingLargeFile plf : Global.largeFilePendingList) {
-					String upName = plf.clip != null ? plf.clip.getUpName() : "";
-					String sizeStr = plf.estimatedSize > 1073741824L ? String.format("%.1fGB", plf.estimatedSize / 1073741824.0) : String.format("%.0fMB", plf.estimatedSize / 1048576.0);
-					JCheckBox cb = new JCheckBox("[" + sizeStr + "] " + (upName.isEmpty() ? "" : upName + " - ") + plf.avTitle);
+				for (DynamicsDB.LargeFileItem item : pendingList) {
+					String sizeStr = item.estimatedSize > 1073741824L ? String.format("%.1fGB", item.estimatedSize / 1073741824.0) : String.format("%.0fMB", item.estimatedSize / 1048576.0);
+					JCheckBox cb = new JCheckBox("[" + sizeStr + "] " + (item.upName == null || item.upName.isEmpty() ? "" : item.upName + " - ") + item.avTitle);
 					cb.setSelected(true);
 					checkPanel.add(cb);
 					cbs.add(cb);
 				}
 				JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
 				JButton okBtn = new JButton("添加到下载列表");
-				JButton cancelBtn = new JButton("取消");
-				btnPanel.add(okBtn); btnPanel.add(cancelBtn);
+				JButton ignoreBtn = new JButton("忽略");
+				btnPanel.add(okBtn); btnPanel.add(ignoreBtn);
 				dPanel.add(btnPanel, BorderLayout.SOUTH);
 				okBtn.addActionListener(ev -> {
-					java.util.Iterator<Global.PendingLargeFile> it = Global.largeFilePendingList.iterator();
 					int idx = 0;
-					while (it.hasNext()) {
-						Global.PendingLargeFile plf = it.next();
+					for (DynamicsDB.LargeFileItem item : pendingList) {
 						if (cbs.get(idx).isSelected()) {
-							it.remove();
-							final Global.PendingLargeFile f = plf;
+							DynamicsDB.markLargeFileDone(item.id);
+							final DynamicsDB.LargeFileItem f = item;
 							javax.swing.SwingUtilities.invokeLater(() -> {
 								try {
+									nicelee.bilibili.model.ClipInfo clip = new nicelee.bilibili.model.ClipInfo();
+									clip.setAvTitle(f.avTitle);
+									clip.setAvId(f.avid);
+									if (f.cid != null && !f.cid.isEmpty()) {
+										clip.setcId(Long.parseLong(f.cid));
+									}
+									clip.setPage(f.page);
+									clip.setUpName(f.upName);
 									INeedAV ina = new INeedAV();
-									DownloadInfoPanel dp = new DownloadInfoPanel(f.clip, f.qn);
+									DownloadInfoPanel dp = new DownloadInfoPanel(clip, f.qn);
 									dp.initDownloadParams(ina, f.urlQuery, f.avid + "-" + f.realQN, f.formattedTitle, f.realQN);
 									Global.downloadTaskList.put(dp, ina.getDownloader());
 									Global.downloadTab.getJpContent().add(dp);
@@ -424,12 +430,21 @@ public class MJMenuBar extends JMenuBar {
 					}
 					batchDownload.setEnabled(true);
 					dialog.dispose();
-					updateLargeFileDownloadBadge(largeFileDownload);
+					int remaining = DynamicsDB.countPendingLargeFiles();
+					largeFileDownload.setText(remaining > 0 ? "大文件下载 (" + remaining + ")" : "大文件下载");
 				});
-				cancelBtn.addActionListener(ev -> {
+				ignoreBtn.addActionListener(ev -> {
+					int idx = 0;
+					for (DynamicsDB.LargeFileItem item : pendingList) {
+						if (cbs.get(idx).isSelected()) {
+							DynamicsDB.markLargeFileIgnored(item.id);
+						}
+						idx++;
+					}
 					batchDownload.setEnabled(true);
 					dialog.dispose();
-					updateLargeFileDownloadBadge(largeFileDownload);
+					int remaining = DynamicsDB.countPendingLargeFiles();
+					largeFileDownload.setText(remaining > 0 ? "大文件下载 (" + remaining + ")" : "大文件下载");
 				});
 				dialog.addWindowListener(new WindowAdapter() {
 					@Override
@@ -472,7 +487,7 @@ public class MJMenuBar extends JMenuBar {
 				TabSettings.openSettingTab();
 			}
 		});
-		
+
 		// 修改app.config后，重新加载配置使生效
 		reloadConfig.addActionListener(new ActionListener() {
 			@Override
@@ -480,7 +495,7 @@ public class MJMenuBar extends JMenuBar {
 				ConfigUtil.initConfigs();
 			}
 		});
-		
+
 		// 修改repo.config后，重新加载仓库使生效
 		reloadRepo.addActionListener(new ActionListener() {
 			@Override
@@ -488,7 +503,7 @@ public class MJMenuBar extends JMenuBar {
 				RepoUtil.init(true);
 			}
 		});
-		
+
 		// 保存下载页的所有任务
 		saveDownloading.addActionListener(new ActionListener() {
 			@Override
@@ -503,8 +518,8 @@ public class MJMenuBar extends JMenuBar {
 				final String taskSep = "\r\n##\r\n";
 				final String attrSep = "\r\n@@\r\n";
 				try (BufferedWriter writer =
-						     new BufferedWriter(new OutputStreamWriter(new FileOutputStream(downloadingTasks),
-						                                               "utf-8"))) {
+					         new BufferedWriter(new OutputStreamWriter(new FileOutputStream(downloadingTasks),
+					                                                   "utf-8"))) {
 					for (DownloadInfoPanel dp : Global.downloadTaskList.keySet()) {
 						ClipInfo c = dp.getClipInfo();
 						writer.append(c.getAvTitle());
@@ -540,10 +555,10 @@ public class MJMenuBar extends JMenuBar {
 				} catch (Exception e1) {
 					e1.printStackTrace();
 				}
-				
+
 			}
 		});
-		
+
 		// 加载保存的任务到下载页
 		loadDownloading.addActionListener(new ActionListener() {
 			@Override
@@ -554,7 +569,7 @@ public class MJMenuBar extends JMenuBar {
 				final String taskSep = "\r\n##\r\n";
 				final String attrSep = "\r\n@@\r\n";
 				try (BufferedReader reader =
-						     new BufferedReader(new InputStreamReader(new FileInputStream(downloadingTasks), "utf-8"))) {
+					         new BufferedReader(new InputStreamReader(new FileInputStream(downloadingTasks), "utf-8"))) {
 					String line;
 					StringBuilder result = new StringBuilder();
 					while ((line = reader.readLine()) != null) {
@@ -575,11 +590,11 @@ public class MJMenuBar extends JMenuBar {
 						if (!"null".equals(attrs[6])) c.setListOwnerName(attrs[6]);
 						c.setFavTime(Long.parseLong(attrs[7]));
 						c.setcTime(Long.parseLong(attrs[8]));
-						
+
 						c.setUpName(attrs[9]);
 						c.setUpId(attrs[10]);
 						c.setRemark(Integer.parseInt(attrs[11]));
-						
+
 						int qn = Integer.parseInt(attrs[12]);
 						if(attrs.length >= 14 && !"null".equals(attrs[13])) {
 							c.setListOwnerId(attrs[13]);
@@ -595,7 +610,7 @@ public class MJMenuBar extends JMenuBar {
 				}
 			}
 		});
-		
+
 		// 关闭Tab页
 		closeAllMenuItem.addActionListener(new ActionListener() {
 			@Override
@@ -613,7 +628,7 @@ public class MJMenuBar extends JMenuBar {
 				} else Global.index.closeAllVideoTabs();
 			}
 		});
-		
+
 		// 批量下载
 		doMultiDownMenuItem.addActionListener(new ActionListener() {
 			@Override
@@ -624,7 +639,7 @@ public class MJMenuBar extends JMenuBar {
 				Global.index.downVideoTabs(downAll, qn);
 			}
 		});
-		
+
 		// 各种登录
 		qrLogin.addActionListener(new ActionListener() {
 			@Override
@@ -680,7 +695,7 @@ public class MJMenuBar extends JMenuBar {
 				}
 			}
 		});
-		
+
 		// 作品信息
 		infoMenuItem.addActionListener(new ActionListener() {
 			@Override
@@ -702,7 +717,7 @@ public class MJMenuBar extends JMenuBar {
 								                              JOptionPane.PLAIN_MESSAGE);
 							} else {
 								VersionManagerUtil.downloadLatestVersion();
-								
+
 							}
 						} catch (Exception e1) {
 							JOptionPane.showMessageDialog(null, "出现了异常，异常原因为：" + e1.toString(), "异常",
@@ -713,44 +728,34 @@ public class MJMenuBar extends JMenuBar {
 				}, "更新线程").start();
 			}
 		});
-		
-	}
 
-	private void updateLargeFileDownloadBadge(JMenuItem item) {
-		int n = Global.largeFilePendingList.size();
-		if (n == 0) {
-			item.setText("大文件下载");
-		} else {
-			item.setText("大文件下载 (" + n + ")");
-		}
 	}
 
 
-	
 
 
 
 	private JPanel buildConfigPanel(List<String> configFiles) {
 		JPanel panel = new JPanel(new BorderLayout(5, 5));
 		panel.setPreferredSize(new Dimension(450, 400));
-		
+
 		JTextField searchField = new JTextField();
 		searchField.setToolTipText("search...");
 		panel.add(searchField, BorderLayout.NORTH);
-		
+
 		JPanel checkPanel = new JPanel();
 		checkPanel.setLayout(new BoxLayout(checkPanel, BoxLayout.Y_AXIS));
 		JScrollPane sp = new JScrollPane(checkPanel);
 		sp.setPreferredSize(new Dimension(430, 300));
 		panel.add(sp, BorderLayout.CENTER);
-		
+
 		JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 3));
-		JButton btnAll = new JButton("all"); JButton btnInv = new JButton("inv"); 
+		JButton btnAll = new JButton("all"); JButton btnInv = new JButton("inv");
 		JButton btnOK = new JButton("start"); btnAll.setPreferredSize(new Dimension(60,22));
 		btnInv.setPreferredSize(new Dimension(60,22)); btnOK.setPreferredSize(new Dimension(80,22));
 		btnRow.add(btnAll); btnRow.add(btnInv); btnRow.add(btnOK);
 		panel.add(btnRow, BorderLayout.SOUTH);
-		
+
 		List<JCheckBox> cbs = new ArrayList<>();
 		Runnable rebuild = () -> {
 			checkPanel.removeAll(); cbs.clear();
@@ -763,7 +768,7 @@ public class MJMenuBar extends JMenuBar {
 			checkPanel.revalidate(); checkPanel.repaint();
 		};
 		rebuild.run();
-		
+
 		searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
 			public void changedUpdate(javax.swing.event.DocumentEvent e) { rebuild.run(); }
 			public void insertUpdate(javax.swing.event.DocumentEvent e) { rebuild.run(); }
