@@ -126,7 +126,10 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 					}
 
 					JSONObject archive = major.getJSONObject("archive");
-					String bvid = archive.getString("bvid");
+					String bvid = archive.optString("bvid", "");
+					if (bvid.isEmpty()) {
+						continue;
+					}
 					// check catalog first, then repo，避免浪费API请求
 					if (RepoUtil.isBvInRepo(bvid)) {
 						skippedCount++;

@@ -94,7 +94,7 @@ public class DynamicsDB {
 			ps.setString(1, uid);
 			ResultSet rs = ps.executeQuery();
 			return rs.next() && rs.getInt(1) == 1;
-		} catch (SQLException e) { Logger.println("DynamicsDB: " + e.getMessage()); return false; }
+		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); return false; }
 	}
 
 	public static synchronized void markInitialScanDone(String uid, String upName) {
@@ -104,7 +104,7 @@ public class DynamicsDB {
 			ps.setString(1, uid);
 			ps.setString(2, upName);
 			ps.executeUpdate();
-		} catch (SQLException e) { Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
 	}
 
 	public static synchronized String getLastOffset(String uid) {
@@ -114,7 +114,7 @@ public class DynamicsDB {
 			ps.setString(1, uid);
 			ResultSet rs = ps.executeQuery();
 			return rs.next() ? rs.getString(1) : "";
-		} catch (SQLException e) { return ""; }
+		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); return ""; }
 	}
 
 	public static synchronized void setLastOffset(String uid, String upName, String offset, long lastPubTimestamp) {
@@ -127,7 +127,7 @@ public class DynamicsDB {
 			ps.setString(3, offset);
 			ps.setLong(4, lastPubTimestamp);
 			ps.executeUpdate();
-		} catch (SQLException e) { Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
 	}
 
 	// ===== 查询 =====
@@ -138,7 +138,7 @@ public class DynamicsDB {
 			ps.setString(1, uid);
 			ps.setString(2, dynamicId);
 			return ps.executeQuery().next();
-		} catch (SQLException e) { return false; }
+		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); return false; }
 	}
 
 	public static synchronized boolean containsBvid(String uid, String bvid) {
@@ -148,7 +148,7 @@ public class DynamicsDB {
 			ps.setString(1, uid);
 			ps.setString(2, bvid);
 			return ps.executeQuery().next();
-		} catch (SQLException e) { return false; }
+		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); return false; }
 	}
 
 	public static synchronized Set<String> getKnownBvids(String uid) {
@@ -159,7 +159,7 @@ public class DynamicsDB {
 			ps.setString(1, uid);
 			ResultSet rs = ps.executeQuery();
 			while (rs.next()) set.add(rs.getString(1));
-		} catch (SQLException e) { Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
 		return set;
 	}
 
@@ -191,8 +191,13 @@ public class DynamicsDB {
 				ps.executeBatch();
 			}
 			conn.commit();
-			conn.setAutoCommit(true);
-		} catch (SQLException e) { Logger.println("DynamicsDB insert: " + e.getMessage()); }
+		} catch (SQLException e) {
+			dbAvailable = false;
+			try { conn.rollback(); } catch (SQLException ignored) {}
+			Logger.println("DynamicsDB insert: " + e.getMessage());
+		} finally {
+			try { conn.setAutoCommit(true); } catch (SQLException ignored) {}
+		}
 	}
 
 	// ===== 下载状态 =====
@@ -205,7 +210,7 @@ public class DynamicsDB {
 			ps.setString(2, uid);
 			ps.setString(3, bvid);
 			ps.executeUpdate();
-		} catch (SQLException e) { Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
 	}
 
 	public static synchronized void markDownloadFailed(String uid, String bvid) {
@@ -215,7 +220,7 @@ public class DynamicsDB {
 			ps.setString(1, uid);
 			ps.setString(2, bvid);
 			ps.executeUpdate();
-		} catch (SQLException e) { Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
 	}
 
 	// ===== 迁移 =====
