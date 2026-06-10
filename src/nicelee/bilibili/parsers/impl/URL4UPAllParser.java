@@ -16,6 +16,7 @@ import nicelee.bilibili.util.HttpCookies;
 import nicelee.bilibili.util.HttpHeaders;
 import nicelee.bilibili.util.Logger;
 import nicelee.bilibili.util.RepoUtil;
+import nicelee.bilibili.util.CatalogUtil;
 
 /**
  * 针对以下url类型
@@ -126,19 +127,22 @@ public class URL4UPAllParser extends AbstractPageQueryParser<VideoInfo> {
 			}
 
 			LinkedHashMap<Long, ClipInfo> map = pageQueryResult.getClips();
+			int knownCount = 0; int totalCount = 0;
 			for (int i = min - 1; i < arr.length() && i < max; i++) {
 				JSONObject jAV = arr.getJSONObject(i);
 				String bvid = jAV.getString("bvid");
-				// skip if already in repo
-				if (RepoUtil.isBvInRepo(bvid)) continue;
-				// 跳过课程解析
 				String jumpUrl = jAV.optString("jump_url", "");
 				if(jumpUrl.startsWith("https://www.bilibili.com/cheese/"))
 					continue;
+				totalCount++;
+				CatalogUtil.addAndSave(spaceID, bvid);
+				// skip if already in repo
+				if (RepoUtil.isBvInRepo(bvid)) { knownCount++; continue; }
 				map.putAll(convertVideoToClipMap(bvid, (page - 1) * API_PMAX + i + 1, videoFormat,
 						getVideoLink));
 			}
-			return true;
+			// if entire page is known, no more new content ahead (newest-first order)
+			return totalCount == 0 || knownCount < totalCount;
 		} catch (Exception e) {
 			 e.printStackTrace();
 			return false;

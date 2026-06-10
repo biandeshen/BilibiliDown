@@ -15,6 +15,7 @@ import nicelee.bilibili.util.HttpCookies;
 import nicelee.bilibili.util.HttpHeaders;
 import nicelee.bilibili.util.Logger;
 import nicelee.bilibili.util.RepoUtil;
+import nicelee.bilibili.util.CatalogUtil;
 
 /**
  * 下载UP主动态中的视频
@@ -122,6 +123,7 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 
 					JSONObject archive = major.getJSONObject("archive");
 					String bvid = archive.getString("bvid");
+					CatalogUtil.addAndSave(spaceID, bvid);
 
 					// 已入库则跳过，避免浪费API请求
 					if (RepoUtil.isBvInRepo(bvid)) {
