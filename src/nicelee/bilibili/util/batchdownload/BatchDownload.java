@@ -17,7 +17,12 @@ import nicelee.bilibili.model.ClipInfo;
 import nicelee.bilibili.model.FavList;
 import nicelee.bilibili.util.Logger;
 import nicelee.bilibili.util.ResourcesUtil;
+import nicelee.bilibili.INeedAV;
+import nicelee.bilibili.model.ClipInfo;
+import nicelee.bilibili.model.VideoInfo;
+import nicelee.bilibili.enums.VideoQualityEnum;
 import nicelee.ui.Global;
+import nicelee.ui.thread.DownloadRunnable;
 
 public class BatchDownload implements Cloneable {
 
@@ -355,4 +360,38 @@ public class BatchDownload implements Cloneable {
 		this.remark = remark;
 	}
 
+	// Shared download loop used by BatchDownloadThread and RealTimeDownloadThread
+	public static void processBatchEntry(BatchDownload batch) {
+		final java.util.regex.Pattern pagePattern = java.util.regex.Pattern.compile("p=[0-9]+$");
+		INeedAV ina = new INeedAV();
+		String validStr = ina.getValidID(batch.getUrl());
+		java.util.regex.Matcher m = pagePattern.matcher(validStr);
+		boolean isPageable = m.find();
+		if (isPageable) validStr = validStr.replaceFirst("p=[0-9]+$", "");
+		int page = batch.getStartPage();
+		boolean stopFlag = false;
+		while (!stopFlag) {
+			if (!isPageable && page >= 2) break;
+			String sp = validStr + " p=" + page;
+			try {
+				VideoInfo avInfo = ina.getVideoDetail(sp, Global.downloadFormat, false);
+				java.util.Collection<ClipInfo> clips = avInfo.getClips().values();
+				if (clips.size() == 0) break;
+				for (ClipInfo clip : clips) {
+					if (batch.matchStopCondition(clip, page)) {
+						if (batch.isIncludeBoundsBV() && batch.matchDownloadCondition(clip, page)) {
+							Global.queryThreadPool.execute(new DownloadRunnable(avInfo, clip, VideoQualityEnum.getQN(Global.menu_qn)));
+						}
+						stopFlag = true; break;
+					}
+					if (batch.matchDownloadCondition(clip, page)) {
+						Global.queryThreadPool.execute(new DownloadRunnable(avInfo, clip, VideoQualityEnum.getQN(Global.menu_qn)));
+					}
+				}
+				page++;
+				Thread.sleep(Global.sleepBetweenPages);
+			} catch (Exception e) { e.printStackTrace(); break; }
+		}
+		try { Thread.sleep(Global.sleepBetweenBatches); } catch (InterruptedException e) {}
+	}
 }

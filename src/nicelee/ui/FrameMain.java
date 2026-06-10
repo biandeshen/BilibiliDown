@@ -197,8 +197,8 @@ public class FrameMain extends JFrame {
 				// 保存配置
 				try { nicelee.bilibili.util.ConfigUtil.saveConfig(); } catch (Exception ignored) {}
 				// 关闭线程池
-				if (Global.downLoadThreadPool != null) Global.downLoadThreadPool.shutdownNow();
-				if (Global.queryThreadPool != null) Global.queryThreadPool.shutdownNow();
+				if (Global.downLoadThreadPool != null) { Global.downLoadThreadPool.shutdown(); try { Global.downLoadThreadPool.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS); } catch (InterruptedException ignored) {} }
+				if (Global.queryThreadPool != null) { Global.queryThreadPool.shutdown(); try { Global.queryThreadPool.awaitTermination(3, java.util.concurrent.TimeUnit.SECONDS); } catch (InterruptedException ignored) {} }
 				System.exit(0);
 			}
 		});
