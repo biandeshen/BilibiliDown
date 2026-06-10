@@ -406,7 +406,12 @@ public abstract class AbstractBaseParser implements IInputParser {
 			List<HttpCookie> cookie = HttpCookies.globalCookiesWithFingerprint();
 			String json = util.getContent(url, headers.getBiliJsonAPIHeaders(bvId), cookie);
 			Logger.println(json);
-			jObj = new JSONObject(json).getJSONObject("data");
+			JSONObject jResp = new JSONObject(json);
+			if (jResp.optInt("code") != 0) {
+				Logger.println("playurl API error: " + jResp.optString("message"));
+				throw new ApiLinkQueryParseError("playurl failed: " + jResp.optString("message"));
+			}
+			jObj = jResp.getJSONObject("data");
 		} else {
 			// 非普通类型
 			url = "https://api.bilibili.com/pgc/player/web/playurl?fnver=0&fourk=1&otype=json&avid=%s&cid=%s&qn=%s&fnval=%s";
