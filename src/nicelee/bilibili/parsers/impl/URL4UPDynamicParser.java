@@ -66,6 +66,7 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 		initPageQueryParam();
 		int videoFormat = (int) obj[0];
 		boolean getVideoLink = (boolean) obj[1];
+		boolean isInitialDone = DynamicsDB.isInitialScanDone(spaceID);
 
 		if (page == 1) {
 			currentOffset = "";
