@@ -262,6 +262,7 @@ public class MJMenuBar extends JMenuBar {
 		// 将原来的 dBatchDownMenuItem 创建代码替换为:
 		JMenu configSelectMenu = new JMenu("一键下载配置");
 		JMenuItem configScrollItem = new JMenuItem();
+		configScrollItem.setPreferredSize(new Dimension(500, 440));
 		JPanel configScrollPanel = buildConfigPanel(configFiles);
 		configScrollItem.setLayout(new BorderLayout());
 		configScrollItem.add(configScrollPanel, BorderLayout.CENTER);
