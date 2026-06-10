@@ -378,10 +378,6 @@ public class BatchDownload implements Cloneable {
 		boolean isPageable = m.find();
 		if (isPageable) validStr = validStr.replaceFirst("p=[0-9]+$", "");
 		int page = batch.getStartPage();
-		// auto stop: if no stop condition, stop when hitting downloaded video
-		if (batch.getStopCondition().isEmpty()) {
-			batch.getStopCondition().add(new Condition[]{new Condition("_", ":", "downloaded")});
-		}
 		boolean stopFlag = false;
 		while (!stopFlag) {
 			if (!isPageable && page >= 2) break;
