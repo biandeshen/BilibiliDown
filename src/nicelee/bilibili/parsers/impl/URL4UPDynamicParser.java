@@ -138,8 +138,8 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 						pageQueryResult.setVideoId(spaceID);
 						pageQueryResult.setAuthor(moduleAuthor.getString("name"));
 						pageQueryResult.setAuthorId(spaceID);
-						pageQueryResult.setVideoName(pageQueryResult.getAuthor() + "的动态视频");
-						pageQueryResult.setBrief("动态视频列表 - " + paramSetter.getPage());
+						pageQueryResult.setVideoName(pageQueryResult.getAuthor() + " - videos");
+						pageQueryResult.setBrief("videos - " + paramSetter.getPage());
 					}
 
 					// 将视频的clips加入结果

@@ -332,10 +332,10 @@ public class MJMenuBar extends JMenuBar {
 		batchDownload.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (selectedConfigFiles.isEmpty()) {
-					showConfigSelectDialog(configFiles);
-				}
-				if (selectedConfigFiles.isEmpty()) return;
+					if (selectedConfigFiles.isEmpty()) {
+						JOptionPane.showMessageDialog(frame, "No config selected. Use Config menu first.", "Tip", JOptionPane.INFORMATION_MESSAGE);
+						return;
+					}
 				for (String cfg : selectedConfigFiles) {
 					new BatchDownloadThread(cfg).start();
 				}
@@ -446,7 +446,8 @@ public class MJMenuBar extends JMenuBar {
 				Logger.println(m);
 				if (m == 0) {
 					if (selectedConfigFiles.isEmpty()) {
-						showConfigSelectDialog(configFiles);
+						JOptionPane.showMessageDialog(frame, "请先在配置菜单中勾选配置文件", "提示", JOptionPane.INFORMATION_MESSAGE);
+						return;
 					}
 					if (selectedConfigFiles.isEmpty()) return;
 					for (String cfg : selectedConfigFiles) {

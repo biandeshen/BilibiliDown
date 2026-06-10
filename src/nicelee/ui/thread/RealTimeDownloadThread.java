@@ -49,6 +49,9 @@ public class RealTimeDownloadThread extends Thread {
 
 	final Pattern pagePattern = Pattern.compile("p=[0-9]+$");
 
+		public void pauseCycle() { paused = true; }
+		public void resumeCycle() { paused = false; }
+
 	@Override
 	public void run() {
 		while (!Thread.currentThread().isInterrupted()) {  // 添加无限循环
