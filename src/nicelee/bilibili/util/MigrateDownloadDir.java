@@ -74,13 +74,14 @@ public class MigrateDownloadDir {
 						h.put("Origin", "https://space.bilibili.com/");
 						String json = util.getContent(url, h, HttpCookies.globalCookiesWithFingerprint());
 						JSONObject data = new JSONObject(json).getJSONObject("data").getJSONObject("list");
-						String name = data.getJSONArray("vlist").getJSONObject(0).getString("author");
+						if (data.getJSONArray("vlist").length() == 0) throw new RuntimeException("no videos");
+					String name = data.getJSONArray("vlist").getJSONObject(0).getString("author");
 					uidToName.put(uid, name);
 					// name可能重复(不同UID同名)，保留第一个
 					nameToUid.putIfAbsent(name, uid);
 					log.append("  [").append(++idx).append("/").append(uids.size())
 						.append("] ").append(uid).append(" -> ").append(name).append("\n");
-					Thread.sleep(200);
+					Thread.sleep(1000);
 				} catch (Exception e) {
 					log.append("  获取UID ").append(uid).append(" 信息失败: ").append(e.getMessage()).append("\n");
 				}
