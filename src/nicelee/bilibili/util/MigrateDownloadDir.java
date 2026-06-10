@@ -66,13 +66,16 @@ public class MigrateDownloadDir {
 			int idx = 0;
 			for (String uid : uids) {
 				try {
-					String url = "https://api.bilibili.com/x/space/acc/info?mid=" + uid;
+					String url = "https://api.bilibili.com/x/space/wbi/arc/search?mid=" + uid + "&ps=1&pn=1&order=pubdate";
 					url += API.genDmImgParams();
 					url = API.encWbi(url);
-					String json = util.getContent(url, headers.getCommonHeaders("api.bilibili.com"),
-							HttpCookies.globalCookiesWithFingerprint());
-					JSONObject data = new JSONObject(json).getJSONObject("data");
-					String name = data.getString("name");
+					try {
+						java.util.HashMap<String, String> h = headers.getCommonHeaders("api.bilibili.com");
+						h.put("Referer", "https://space.bilibili.com/");
+						h.put("Origin", "https://space.bilibili.com/");
+						String json = util.getContent(url, h, HttpCookies.globalCookiesWithFingerprint());
+						JSONObject data = new JSONObject(json).getJSONObject("data").getJSONObject("list");
+						String name = data.getJSONArray("vlist").getJSONObject(0).getString("author");
 					uidToName.put(uid, name);
 					// name可能重复(不同UID同名)，保留第一个
 					nameToUid.putIfAbsent(name, uid);
