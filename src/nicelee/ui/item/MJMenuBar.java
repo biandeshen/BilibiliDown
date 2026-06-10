@@ -772,6 +772,13 @@ public class MJMenuBar extends JMenuBar {
 		}
 		
 		startItem.addActionListener(e -> {
+				// Pause realtime while batch runs
+				java.util.List<Thread> rtThreads = new java.util.ArrayList<>();
+				for (Thread t : Thread.getAllStackTraces().keySet()) {
+					if (t instanceof RealTimeDownloadThread && t.isAlive())
+						rtThreads.add(t);
+				}
+				for (Thread t : rtThreads) ((RealTimeDownloadThread)t).pauseCycle();
 			if (selectedConfigFiles.isEmpty()) {
 				for (int i = 0; i < checkItems.size(); i++) {
 					if (checkItems.get(i).isVisible() && checkItems.get(i).isSelected()) 

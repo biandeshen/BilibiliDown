@@ -35,6 +35,7 @@ import java.util.regex.Pattern;
 public class RealTimeDownloadThread extends Thread {
 
 	List<String> configFilePaths;
+	private volatile boolean paused = false;
 	private Map<String, Long> configLastModified = new HashMap<>();
 
 	public RealTimeDownloadThread(List<String> configFiles) {
@@ -52,7 +53,11 @@ public class RealTimeDownloadThread extends Thread {
 	public void run() {
 		while (!Thread.currentThread().isInterrupted()) {  // 添加无限循环
 			try {
-				for (String configFilePath : configFilePaths) {
+				while (paused && !Thread.currentThread().isInterrupted()) {
+					try { Thread.sleep(5000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
+					}
+										java.util.Collections.shuffle(configFilePaths);
+for (String configFilePath : configFilePaths) {
 					Logger.println("实时下载进行中");
 					File f = ResourcesUtil.search(configFilePath);
 					checkValid(f);
