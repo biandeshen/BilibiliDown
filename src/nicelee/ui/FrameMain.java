@@ -279,7 +279,9 @@ public class FrameMain extends JFrame {
 		
 		int r = javax.swing.JOptionPane.showConfirmDialog(null, sb.toString(),
 			"Incomplete Downloads", javax.swing.JOptionPane.YES_NO_CANCEL_OPTION, javax.swing.JOptionPane.QUESTION_MESSAGE);
-		if (r == javax.swing.JOptionPane.NO_OPTION) {
+		if (r == javax.swing.JOptionPane.YES_OPTION) {
+			resumeFromPartFiles(partFiles);
+		} else if (r == javax.swing.JOptionPane.NO_OPTION) {
 			int deleted = 0;
 			for (File f : partFiles) { if (f.delete()) deleted++; }
 			Logger.println("Deleted " + deleted + " .part files");
@@ -298,5 +300,41 @@ public class FrameMain extends JFrame {
 				result.add(f);
 			}
 		}
+	}
+
+	private static void resumeFromPartFiles(java.util.List<File> partFiles) {
+		java.util.regex.Pattern avidPattern = java.util.regex.Pattern.compile("^(.+?)-(\\d+)-p(\\d+)\\.");
+		java.util.HashSet<String> dedupSet = new java.util.HashSet<>();
+		int resumed = 0;
+		for (File f : partFiles) {
+			String name = f.getName();
+			String baseName = name.endsWith(".part") ? name.substring(0, name.length() - 5) : name;
+			java.util.regex.Matcher m = avidPattern.matcher(baseName);
+			if (m.find()) {
+				final String avid = m.group(1);
+				final int qn = Integer.parseInt(m.group(2));
+				final int page = Integer.parseInt(m.group(3));
+				// Dedup: same avid+page+qn may match multiple part files (e.g. _video.m4s + _audio.m4s)
+				String key = avid + "-p" + page + "-" + qn;
+				if (!dedupSet.add(key)) continue;
+				resumed++;
+				Global.queryThreadPool.execute(() -> {
+					try {
+						INeedAV ina = new INeedAV();
+						VideoInfo avInfo = ina.getVideoDetail(avid + " p=" + page, Global.downloadFormat, false);
+						if (avInfo == null) return;
+						for (ClipInfo clip : avInfo.getClips().values()) {
+							if (clip.getPage() == page) {
+								Global.queryThreadPool.execute(new DownloadRunnable(avInfo, clip, qn));
+								break;
+							}
+						}
+					} catch (Exception e) {
+						Logger.println("Failed to resume " + avid + " p" + page + ": " + e.getMessage());
+					}
+				});
+			}
+		}
+		Logger.println("Resumed " + resumed + " download tasks from .part files");
 	}
 }

@@ -11,6 +11,7 @@ import nicelee.bilibili.util.batchdownload.BatchDownload;
 import nicelee.bilibili.util.batchdownload.BatchDownload.BatchDownloadsBuilder;
 import nicelee.ui.Global;
 import nicelee.ui.thread.DownloadRunnable;
+import nicelee.ui.item.DownloadInfoPanel;
 import nicelee.ui.item.JOptionPane;
 import nicelee.ui.item.JOptionPaneManager;
 

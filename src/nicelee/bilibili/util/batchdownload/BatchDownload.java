@@ -22,6 +22,7 @@ import nicelee.bilibili.model.ClipInfo;
 import nicelee.bilibili.model.VideoInfo;
 import nicelee.bilibili.enums.VideoQualityEnum;
 import nicelee.ui.Global;
+import nicelee.ui.item.DownloadInfoPanel;
 import nicelee.ui.thread.DownloadRunnable;
 
 public class BatchDownload implements Cloneable {
@@ -362,6 +363,7 @@ public class BatchDownload implements Cloneable {
 
 	// Shared download loop used by BatchDownloadThread and RealTimeDownloadThread
 	public static void processBatchEntry(BatchDownload batch) {
+		java.util.HashSet<String> dedupCache = new java.util.HashSet<>();
 		final java.util.regex.Pattern pagePattern = java.util.regex.Pattern.compile("p=[0-9]+$");
 		INeedAV ina = new INeedAV();
 		String validStr = ina.getValidID(batch.getUrl());
@@ -380,12 +382,18 @@ public class BatchDownload implements Cloneable {
 				for (ClipInfo clip : clips) {
 					if (batch.matchStopCondition(clip, page)) {
 						if (batch.isIncludeBoundsBV() && batch.matchDownloadCondition(clip, page)) {
-							Global.queryThreadPool.execute(new DownloadRunnable(avInfo, clip, VideoQualityEnum.getQN(Global.menu_qn)));
+							String dedupKey = clip.getAvId() + "-p" + clip.getPage();
+							if (dedupCache.add(dedupKey) && !existsInDownloadList(clip)) {
+								Global.queryThreadPool.execute(new DownloadRunnable(avInfo, clip, VideoQualityEnum.getQN(Global.menu_qn)));
+							}
 						}
 						stopFlag = true; break;
 					}
 					if (batch.matchDownloadCondition(clip, page)) {
-						Global.queryThreadPool.execute(new DownloadRunnable(avInfo, clip, VideoQualityEnum.getQN(Global.menu_qn)));
+						String dedupKey = clip.getAvId() + "-p" + clip.getPage();
+						if (dedupCache.add(dedupKey) && !existsInDownloadList(clip)) {
+							Global.queryThreadPool.execute(new DownloadRunnable(avInfo, clip, VideoQualityEnum.getQN(Global.menu_qn)));
+						}
 					}
 				}
 				page++;
@@ -393,5 +401,14 @@ public class BatchDownload implements Cloneable {
 			} catch (Exception e) { e.printStackTrace(); break; }
 		}
 		try { Thread.sleep(Global.sleepBetweenBatches); } catch (InterruptedException e) {}
+	}
+
+	private static boolean existsInDownloadList(ClipInfo clip) {
+		for (DownloadInfoPanel dp : Global.downloadTaskList.keySet()) {
+			if (clip.getAvId() != null && clip.getAvId().equals(dp.getAvid()) && dp.getClipInfo().getPage() == clip.getPage()) {
+				return true;
+			}
+		}
+		return false;
 	}
 }
