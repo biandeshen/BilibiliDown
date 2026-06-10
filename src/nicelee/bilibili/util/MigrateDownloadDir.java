@@ -69,8 +69,7 @@ public class MigrateDownloadDir {
 					String url = "https://api.bilibili.com/x/space/wbi/arc/search?mid=" + uid + "&ps=1&pn=1&order=pubdate";
 					url += API.genDmImgParams();
 					url = API.encWbi(url);
-					try {
-						java.util.HashMap<String, String> h = headers.getCommonHeaders("api.bilibili.com");
+					java.util.HashMap<String, String> h = headers.getCommonHeaders("api.bilibili.com");
 						h.put("Referer", "https://space.bilibili.com/");
 						h.put("Origin", "https://space.bilibili.com/");
 						String json = util.getContent(url, h, HttpCookies.globalCookiesWithFingerprint());
