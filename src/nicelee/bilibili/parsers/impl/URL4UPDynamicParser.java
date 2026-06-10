@@ -108,6 +108,10 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 				JSONObject item = items.getJSONObject(i);
 				String type = item.optString("type", "");
 
+				String dynamicId = item.optString("id_str", "");
+				JSONObject mods = null;
+				try { mods = item.optJSONObject("modules"); } catch (Exception e) {}
+				recordDynamicToDB(spaceID, dynamicId, type, mods);
 				if (!"DYNAMIC_TYPE_AV".equals(type)) {
 					continue;
 				}
@@ -190,5 +194,51 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 	@Override
 	protected boolean query(int page, int min, int max, Object... obj) {
 		return false; // 由覆写的 result() 处理
+	}
+	// Build DynamicItem from modules and insert into DB
+	private void recordDynamicToDB(String uid, String dynamicId, String type, JSONObject modules) {
+		try {
+			DynamicItem di = new DynamicItem();
+			di.setDynamicId(dynamicId);
+			di.setUid(uid);
+			di.setType(type);
+			if (modules != null) {
+				try {
+					JSONObject author = modules.optJSONObject("module_author");
+					if (author != null) {
+						di.setUpName(author.optString("name"));
+						di.setPubTimestamp(author.optLong("pub_ts") * 1000);
+					}
+				} catch (Exception e) {}
+				// 按类型提取信息
+				try {
+					JSONObject major = modules.optJSONObject("module_dynamic");
+					if (major != null) major = major.optJSONObject("major");
+					if (major != null) {
+						if ("DYNAMIC_TYPE_AV".equals(type) && major.has("archive")) {
+							JSONObject a = major.getJSONObject("archive");
+							di.setBvid(a.optString("bvid"));
+							di.setTitle(a.optString("title"));
+							di.setCover(a.optString("cover"));
+							di.setDurationText(a.optString("duration_text"));
+						} else if ("DYNAMIC_TYPE_DRAW".equals(type) && major.has("draw")) {
+							JSONObject d = major.getJSONObject("draw");
+							di.setTitle(d.optString("title"));
+							di.setDescription(d.optString("desc"));
+							di.setCover(d.optJSONArray("items") != null && d.optJSONArray("items").length() > 0 ? d.optJSONArray("items").optJSONObject(0).optString("src") : null);
+						} else if ("DYNAMIC_TYPE_WORD".equals(type)) {
+							di.setTitle(major.optString("title"));
+							di.setDescription(major.optString("desc"));
+						} else if ("DYNAMIC_TYPE_ARTICLE".equals(type) && major.has("article")) {
+							JSONObject art = major.getJSONObject("article");
+							di.setTitle(art.optString("title"));
+							di.setDescription(art.optString("desc"));
+							di.setCover(art.optString("cover"));
+						}
+					}
+				} catch (Exception e) {}
+			}
+			DynamicsDB.insertDynamics(java.util.Collections.singletonList(di));
+		} catch (Exception e) { Logger.println("recordDynamicToDB error: " + e.getMessage()); }
 	}
 }

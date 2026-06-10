@@ -21,8 +21,8 @@ public class DynamicsDB {
 	private static final String DB_PATH;
 
 	static {
-		File baseDir = ResourcesUtil.baseDirectory();
-		DB_PATH = new File(baseDir, "config/dynamics").getAbsolutePath();
+		String baseDir = ResourcesUtil.baseDirectory();
+		DB_PATH = baseDir + "/config/dynamics";
 	}
 
 	public static void init() {
