@@ -104,6 +104,8 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 			LinkedHashMap<Long, ClipInfo> map = pageQueryResult.getClips();
 			int clipIndex = (page - 1) * API_PMAX;
 			int skippedCount = 0;
+			int videoOnPage = 0;
+			int videoKnown = 0;
 
 			for (int i = 0; i < items.length(); i++) {
 				JSONObject item = items.getJSONObject(i);
@@ -112,10 +114,11 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 				String dynamicId = item.optString("id_str", "");
 				JSONObject mods = null;
 				try { mods = item.optJSONObject("modules"); } catch (Exception e) {}
-				recordDynamicToDB(spaceID, dynamicId, type, mods);
-				if (!"DYNAMIC_TYPE_AV".equals(type)) {
-					continue;
-				}
+				if (!DynamicsDB.contains(spaceID, dynamicId))
+					recordDynamicToDB(spaceID, dynamicId, type, mods);
+				else videoKnown++;
+				if (!"DYNAMIC_TYPE_AV".equals(type)) continue;
+				videoOnPage++;
 
 				try {
 					JSONObject modules = item.getJSONObject("modules");
@@ -169,8 +172,10 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 				}
 			}
 
-			if (skippedCount > 0) {
-				Logger.println("本页跳过 " + skippedCount + " 个已入库视频");
+			if (skippedCount > 0) Logger.println("本页跳过 " + skippedCount + " 个已入库视频");
+			if (videoOnPage > 0 && videoKnown >= videoOnPage) {
+				Logger.println("all videos on page known, stop pagination");
+				hasMore = false;
 			}
 			// early stop: if all video items on this page are in catalog, stop pagination
 
