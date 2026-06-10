@@ -67,6 +67,7 @@ public class MJMenuBar extends JMenuBar {
 		JMenuItem realTimeDownload = new JMenuItem("实时下载");
 		JMenuItem migrateDownload = new JMenuItem("整理下载文件");
 		JMenuItem largeFileDownload = new JMenuItem("大文件下载");
+		updateLargeFileDownloadBadge(largeFileDownload);
 		JMenuItem batchDownloadRbyR = new JMenuItem("按计划周期下载");
 		JMenuItem reloadConfig = new JMenuItem("重新加载配置");
 		JMenuItem reloadRepo = new JMenuItem("重新加载仓库");
@@ -364,6 +365,7 @@ public class MJMenuBar extends JMenuBar {
 		largeFileDownload.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
+				updateLargeFileDownloadBadge(largeFileDownload);
 				if (Global.largeFilePendingList.isEmpty()) {
 					JOptionPane.showMessageDialog(frame, "没有待确认的大文件", "提示", JOptionPane.INFORMATION_MESSAGE);
 					return;
@@ -413,8 +415,12 @@ public class MJMenuBar extends JMenuBar {
 						idx++;
 					}
 					dialog.dispose();
+					updateLargeFileDownloadBadge(largeFileDownload);
 				});
-				cancelBtn.addActionListener(ev -> dialog.dispose());
+				cancelBtn.addActionListener(ev -> {
+					dialog.dispose();
+					updateLargeFileDownloadBadge(largeFileDownload);
+				});
 				dialog.add(dPanel);
 				dialog.setVisible(true);
 			}
@@ -691,8 +697,17 @@ public class MJMenuBar extends JMenuBar {
 		});
 		
 	}
-	
-	
+
+	private void updateLargeFileDownloadBadge(JMenuItem item) {
+		int n = Global.largeFilePendingList.size();
+		if (n == 0) {
+			item.setText("大文件下载");
+		} else {
+			item.setText("大文件下载 (" + n + ")");
+		}
+	}
+
+
 	private void showConfigSelectDialog(List<String> configFiles) {
 		JDialog dialog = new JDialog(frame, "选择配置文件", true);
 		dialog.setSize(550, 520);

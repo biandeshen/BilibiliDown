@@ -6,6 +6,7 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.net.URI;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -67,6 +68,7 @@ public class DownloadInfoPanel extends JPanel implements ActionListener {
 	JButton btnRemove;
 	JButton btnOpen;
 	JButton btnOpenFolder;
+	JButton btnVideoLink;
 	JButton btnControl;
 	JLabel lbCurrentStatus;
 	JLabel lbDownFile;
@@ -139,6 +141,11 @@ public class DownloadInfoPanel extends JPanel implements ActionListener {
 		btnRemove.addActionListener(this);
 		this.add(btnRemove);
 
+		btnVideoLink = new MJButton("视频链接");
+		btnVideoLink.setPreferredSize(new Dimension(100, 45));
+		btnVideoLink.addActionListener(this);
+		this.add(btnVideoLink);
+
 		JLabel blank = new JLabel();
 		blank.setPreferredSize(new Dimension(100, 45));
 		this.add(blank);
@@ -203,6 +210,12 @@ public class DownloadInfoPanel extends JPanel implements ActionListener {
 				return;
 			}
 			removeTask(true);
+		} else if (e.getSource() == btnVideoLink) {
+			try {
+				Desktop.getDesktop().browse(new URI("https://www.bilibili.com/video/" + avid));
+			} catch (Exception e1) {
+				JOptionPane.showMessageDialog(null, "打开视频链接失败!", "失败", JOptionPane.INFORMATION_MESSAGE);
+			}
 		} else if (e.getSource() == btnControl) {
 			if(TabDownload.isStopAll()) {
 				Logger.println("停止任务中，请误操作");
