@@ -195,7 +195,6 @@ public class MonitoringThread extends Thread {
 			if(lastActiveTaskCount > 0 && activeTask == 0 && pauseTaskCanRetry == 0) {
 				if(Global.playSoundAfterMissionComplete)
 					Audio.play();
-				SysTray.showNotification("BilibiliDown", "所有下载任务已完成");
 			}
 			lastActiveTaskCount = activeTask;
 			try {

@@ -25,11 +25,8 @@ public class SysTray {
 	private SystemTray systemTray;
 	private TrayIcon trayIcon;
 
-	public static void showNotification(String caption, String text) {
-		if (mSysTray != null && mSysTray.trayIcon != null) {
-			mSysTray.trayIcon.displayMessage(caption, text, TrayIcon.MessageType.INFO);
-		}
-	}
+
+	
 
 	private SysTray(JFrame frame, Image systemTrayImg) {
 		this.frame = frame;
