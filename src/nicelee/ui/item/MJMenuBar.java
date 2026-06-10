@@ -722,79 +722,54 @@ public class MJMenuBar extends JMenuBar {
 	
 
 
-	private JMenu buildConfigMenu(List<String> configFiles) {
-		JMenu menu = new JMenu("一键下载配置");
-		JMenuItem searchItem = new JMenuItem();
-		JTextField searchField = new JTextField(20);
-		searchField.setToolTipText("输入关键词过滤...");
-		searchField.setMaximumSize(new Dimension(300, 24));
-		searchField.setPreferredSize(new Dimension(250, 24));
-		searchItem.setLayout(new BorderLayout());
-		searchItem.add(searchField, BorderLayout.CENTER);
-		searchItem.setEnabled(false);
-		menu.add(searchItem);
-		menu.addSeparator();
+
+	private JPanel buildConfigPanel(List<String> configFiles) {
+		JPanel panel = new JPanel(new BorderLayout(5, 5));
+		panel.setPreferredSize(new Dimension(450, 400));
 		
-		List<JCheckBoxMenuItem> checkItems = new ArrayList<>();
-		for (String name : configFiles) {
-			JCheckBoxMenuItem cbItem = new JCheckBoxMenuItem(name, !selectedConfigFiles.isEmpty() ? selectedConfigFiles.contains(name) : true);
-			checkItems.add(cbItem);
-			menu.add(cbItem);
-		}
+		JTextField searchField = new JTextField();
+		searchField.setToolTipText("search...");
+		panel.add(searchField, BorderLayout.NORTH);
 		
-		menu.addSeparator();
-		JMenuItem startItem = new JMenuItem("开始下载");
-		menu.add(startItem);
+		JPanel checkPanel = new JPanel();
+		checkPanel.setLayout(new BoxLayout(checkPanel, BoxLayout.Y_AXIS));
+		JScrollPane sp = new JScrollPane(checkPanel);
+		sp.setPreferredSize(new Dimension(430, 300));
+		panel.add(sp, BorderLayout.CENTER);
 		
-		// Search filter
+		JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 3));
+		JButton btnAll = new JButton("all"); JButton btnInv = new JButton("inv"); 
+		JButton btnOK = new JButton("start"); btnAll.setPreferredSize(new Dimension(60,22));
+		btnInv.setPreferredSize(new Dimension(60,22)); btnOK.setPreferredSize(new Dimension(80,22));
+		btnRow.add(btnAll); btnRow.add(btnInv); btnRow.add(btnOK);
+		panel.add(btnRow, BorderLayout.SOUTH);
+		
+		List<JCheckBox> cbs = new ArrayList<>();
+		Runnable rebuild = () -> {
+			checkPanel.removeAll(); cbs.clear();
+			String f = searchField.getText().trim().toLowerCase();
+			for (String name : configFiles) {
+				if (!f.isEmpty() && !name.toLowerCase().contains(f)) continue;
+				JCheckBox cb = new JCheckBox(name, !selectedConfigFiles.isEmpty() ? selectedConfigFiles.contains(name) : true);
+				cbs.add(cb); checkPanel.add(cb);
+			}
+			checkPanel.revalidate(); checkPanel.repaint();
+		};
+		rebuild.run();
+		
 		searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-			public void changedUpdate(javax.swing.event.DocumentEvent e) { filter(); }
-			public void insertUpdate(javax.swing.event.DocumentEvent e) { filter(); }
-			public void removeUpdate(javax.swing.event.DocumentEvent e) { filter(); }
-			void filter() {
-				String f = searchField.getText().trim().toLowerCase();
-				for (int i = 0; i < configFiles.size(); i++) {
-					checkItems.get(i).setVisible(f.isEmpty() || configFiles.get(i).toLowerCase().contains(f));
-				}
-			}
+			public void changedUpdate(javax.swing.event.DocumentEvent e) { rebuild.run(); }
+			public void insertUpdate(javax.swing.event.DocumentEvent e) { rebuild.run(); }
+			public void removeUpdate(javax.swing.event.DocumentEvent e) { rebuild.run(); }
 		});
-		
-		// Save selection
-		for (int i = 0; i < checkItems.size(); i++) {
-			final int idx = i;
-			checkItems.get(i).addActionListener(e -> {
-				String name = configFiles.get(idx);
-				if (checkItems.get(idx).isSelected()) {
-					if (!selectedConfigFiles.contains(name)) selectedConfigFiles.add(name);
-				} else {
-					selectedConfigFiles.remove(name);
-				}
-			});
-		}
-		
-		startItem.addActionListener(e -> {
-				// Pause realtime while batch runs
-				java.util.List<Thread> rtThreads = new java.util.ArrayList<>();
-				for (Thread t : Thread.getAllStackTraces().keySet()) {
-					if (t instanceof RealTimeDownloadThread && t.isAlive())
-						rtThreads.add(t);
-				}
-				for (Thread t : rtThreads) ((RealTimeDownloadThread)t).pauseCycle();
-			if (selectedConfigFiles.isEmpty()) {
-				for (int i = 0; i < checkItems.size(); i++) {
-					if (checkItems.get(i).isVisible() && checkItems.get(i).isSelected()) 
-						selectedConfigFiles.add(configFiles.get(i));
-				}
-			}
-			if (selectedConfigFiles.isEmpty()) {
-				JOptionPane.showMessageDialog(frame, "请至少选择一个配置文件", "提示", JOptionPane.INFORMATION_MESSAGE);
-				return;
-			}
-			for (String cfg : selectedConfigFiles) {
-				new BatchDownloadThread(cfg).start();
-			}
+		btnAll.addActionListener(e -> { for (JCheckBox cb : cbs) cb.setSelected(true); });
+		btnInv.addActionListener(e -> { for (JCheckBox cb : cbs) cb.setSelected(!cb.isSelected()); });
+		btnOK.addActionListener(e -> {
+			selectedConfigFiles.clear();
+			for (JCheckBox cb : cbs) if (cb.isSelected()) selectedConfigFiles.add(cb.getText());
+			if (selectedConfigFiles.isEmpty()) { JOptionPane.showMessageDialog(frame, "No config selected", "Tip", JOptionPane.INFORMATION_MESSAGE); return; }
+			for (String cfg : selectedConfigFiles) new BatchDownloadThread(cfg).start();
 		});
-		
-		return menu;
+		return panel;
 	}
 }
