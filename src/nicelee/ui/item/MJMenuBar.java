@@ -260,8 +260,7 @@ public class MJMenuBar extends JMenuBar {
 		
 		// 修改原有的一键下载配置菜单创建代码
 		// 将原来的 dBatchDownMenuItem 创建代码替换为:
-		JMenuItem configSelectItem = new JMenuItem("一键下载配置");
-		configSelectItem.addActionListener(e -> showConfigSelectDialog(configFiles));
+		JMenu configSelectMenu = buildConfigMenu(configFiles);
 
 		JMenu dUpdateMenuItem = new MJMenuWithRadioGroupBuilder("更新源选择", Global.updateSourceAvailable.split("\\|")) {
 			@Override
@@ -305,7 +304,7 @@ public class MJMenuBar extends JMenuBar {
 		configMenu.add(dForceReplaceHostMenuItem);
 		configMenu.add(dQNMenuItem);
 		configMenu.add(dQNQueryStrategyMenuItem);
-		configMenu.add(configSelectItem);
+		configMenu.add(configSelectMenu);
 		configMenu.add(dUpdateMenuItem);
 		configMenu.add(dFFmpegMenuItem);
 		configMenu.addSeparator();
@@ -719,77 +718,75 @@ public class MJMenuBar extends JMenuBar {
 	}
 
 
-	private void showConfigSelectDialog(List<String> configFiles) {
-		JDialog dialog = new JDialog(frame, "选择配置文件", true);
-		dialog.setSize(550, 520);
-		dialog.setLocationRelativeTo(frame);
+	
+
+
+	private JMenu buildConfigMenu(List<String> configFiles) {
+		JMenu menu = new JMenu("一键下载配置");
+		JMenuItem searchItem = new JMenuItem();
+		JTextField searchField = new JTextField(20);
+		searchField.setToolTipText("输入关键词过滤...");
+		searchField.setMaximumSize(new Dimension(300, 24));
+		searchField.setPreferredSize(new Dimension(250, 24));
+		searchItem.setLayout(new BorderLayout());
+		searchItem.add(searchField, BorderLayout.CENTER);
+		searchItem.setEnabled(false);
+		menu.add(searchItem);
+		menu.addSeparator();
 		
-		JPanel panel = new JPanel(new BorderLayout(5, 5));
-		panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+		List<JCheckBoxMenuItem> checkItems = new ArrayList<>();
+		for (String name : configFiles) {
+			JCheckBoxMenuItem cbItem = new JCheckBoxMenuItem(name, !selectedConfigFiles.isEmpty() ? selectedConfigFiles.contains(name) : true);
+			checkItems.add(cbItem);
+			menu.add(cbItem);
+		}
 		
-		JTextField searchField = new JTextField();
-		searchField.setToolTipText("输入关键词过滤配置文件...");
-		panel.add(searchField, BorderLayout.NORTH);
+		menu.addSeparator();
+		JMenuItem startItem = new JMenuItem("开始下载");
+		menu.add(startItem);
 		
-		JPanel checkPanel = new JPanel();
-		checkPanel.setLayout(new BoxLayout(checkPanel, BoxLayout.Y_AXIS));
-		JScrollPane scrollPane = new JScrollPane(checkPanel);
-		scrollPane.setPreferredSize(new Dimension(520, 360));
-		panel.add(scrollPane, BorderLayout.CENTER);
-		
-		JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
-		JButton selectAllBtn = new JButton("全选");
-		JButton selectNoneBtn = new JButton("反选");
-		JButton okBtn = new JButton("确定");
-		JButton cancelBtn = new JButton("取消");
-		bottomPanel.add(selectAllBtn);
-		bottomPanel.add(selectNoneBtn);
-		bottomPanel.add(Box.createHorizontalGlue());
-		bottomPanel.add(okBtn);
-		bottomPanel.add(cancelBtn);
-		panel.add(bottomPanel, BorderLayout.SOUTH);
-		
-		List<JCheckBox> checkBoxes = new ArrayList<>();
-		Runnable rebuildList = () -> {
-			checkPanel.removeAll();
-			checkBoxes.clear();
-			String filter = searchField.getText().trim().toLowerCase();
-			for (String name : configFiles) {
-				if (!filter.isEmpty() && !name.toLowerCase().contains(filter))
-					continue;
-				JCheckBox cb = new JCheckBox(name);
-				cb.setAlignmentX(Component.LEFT_ALIGNMENT);
-				cb.setSelected(true); // default all selected
-				checkPanel.add(cb);
-				checkBoxes.add(cb);
-			}
-			checkPanel.revalidate();
-			checkPanel.repaint();
-		};
-		rebuildList.run();
-		
+		// Search filter
 		searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-			public void insertUpdate(javax.swing.event.DocumentEvent e) { rebuildList.run(); }
-			public void removeUpdate(javax.swing.event.DocumentEvent e) { rebuildList.run(); }
-			public void changedUpdate(javax.swing.event.DocumentEvent e) { rebuildList.run(); }
-		});
-		
-		selectAllBtn.addActionListener(e -> { for (JCheckBox cb : checkBoxes) cb.setSelected(true); });
-		selectNoneBtn.addActionListener(e -> { for (JCheckBox cb : checkBoxes) cb.setSelected(!cb.isSelected()); });
-		
-		okBtn.addActionListener(e -> {
-			selectedConfigFiles.clear();
-			for (JCheckBox cb : checkBoxes) {
-				if (cb.isSelected()) selectedConfigFiles.add(cb.getText());
+			public void changedUpdate(javax.swing.event.DocumentEvent e) { filter(); }
+			public void insertUpdate(javax.swing.event.DocumentEvent e) { filter(); }
+			public void removeUpdate(javax.swing.event.DocumentEvent e) { filter(); }
+			void filter() {
+				String f = searchField.getText().trim().toLowerCase();
+				for (int i = 0; i < configFiles.size(); i++) {
+					checkItems.get(i).setVisible(f.isEmpty() || configFiles.get(i).toLowerCase().contains(f));
+				}
 			}
-			Logger.println("已选择配置: " + selectedConfigFiles);
-			dialog.dispose();
 		});
-		cancelBtn.addActionListener(e -> dialog.dispose());
 		
-		dialog.add(panel);
-		dialog.setVisible(true);
+		// Save selection
+		for (int i = 0; i < checkItems.size(); i++) {
+			final int idx = i;
+			checkItems.get(i).addActionListener(e -> {
+				String name = configFiles.get(idx);
+				if (checkItems.get(idx).isSelected()) {
+					if (!selectedConfigFiles.contains(name)) selectedConfigFiles.add(name);
+				} else {
+					selectedConfigFiles.remove(name);
+				}
+			});
+		}
+		
+		startItem.addActionListener(e -> {
+			if (selectedConfigFiles.isEmpty()) {
+				for (int i = 0; i < checkItems.size(); i++) {
+					if (checkItems.get(i).isVisible() && checkItems.get(i).isSelected()) 
+						selectedConfigFiles.add(configFiles.get(i));
+				}
+			}
+			if (selectedConfigFiles.isEmpty()) {
+				JOptionPane.showMessageDialog(frame, "请至少选择一个配置文件", "提示", JOptionPane.INFORMATION_MESSAGE);
+				return;
+			}
+			for (String cfg : selectedConfigFiles) {
+				new BatchDownloadThread(cfg).start();
+			}
+		});
+		
+		return menu;
 	}
-
-
 }
