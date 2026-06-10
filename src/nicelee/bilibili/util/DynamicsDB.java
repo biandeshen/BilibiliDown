@@ -110,8 +110,8 @@ public class DynamicsDB {
 	}
 
 	// ===== 大文件队列 =====
-	public static synchronized void insertLargeFile(String uid, String upName, String bvid,
-			String avTitle, String cover, long estimatedSize, String urlQuery, int qn, String formattedTitle) {
+	public static synchronized void insertLargeFile(String uid, String upName, String bvid, String avid, String cid, int realQN, int page,
+			String avTitle, String cover, long estimatedSize, String urlQuery, int qn, String formattedTitle, int _realQN, int _page) {
 		if (!dbAvailable) return;
 		try (PreparedStatement ps = conn.prepareStatement(
 				"INSERT INTO large_file_queue (uid, up_name, bvid, av_title, cover, estimated_size, url_query, qn, formatted_title)" +
@@ -133,7 +133,7 @@ public class DynamicsDB {
 		List<LargeFileItem> list = new ArrayList<>();
 		if (!dbAvailable) return list;
 		try (PreparedStatement ps = conn.prepareStatement(
-				"SELECT id, uid, up_name, bvid, av_title, cover, estimated_size, url_query, qn, formatted_title, status," +
+				"SELECT id, uid, up_name, bvid, avid, cid, av_title, cover, estimated_size, url_query, qn, real_qn, page, formatted_title, status," +
 				" avid, cid, real_qn, page" +
 				" FROM large_file_queue WHERE status=0 ORDER BY id")) {
 			ResultSet rs = ps.executeQuery();
