@@ -18,6 +18,7 @@ import nicelee.bilibili.enums.StatusEnum;
 import nicelee.ui.Global;
 
 public class HttpRequestUtilEx extends HttpRequestUtil {
+	private final Object sizeLock = new Object();
 
 	
 	protected volatile boolean hasError = false;
@@ -73,7 +74,7 @@ public class HttpRequestUtilEx extends HttpRequestUtil {
 						if (fileDownloadPart.exists() && fileDownloadPart.length() > 0) {
 							offset = fileDownloadPart.length();
 							if(offset == max - min + 1) {
-								synchronized (downloadedFileSize) {
+								synchronized (sizeLock) {
 									downloadedFileSize += offset;
 									return;
 								}
@@ -114,7 +115,7 @@ public class HttpRequestUtilEx extends HttpRequestUtil {
 						}
 						byte[] buffer = new byte[1024 * 1024];
 						int lenRead = inn.read(buffer);
-						synchronized (downloadedFileSize) {
+						synchronized (sizeLock) {
 							downloadedFileSize += offset + lenRead;
 						}
 						while (lenRead > -1) {
@@ -127,7 +128,7 @@ public class HttpRequestUtilEx extends HttpRequestUtil {
 							raf.write(buffer, 0, lenRead);
 							// System.out.println("当前完成度: " + cnt*100/total + "%");
 							lenRead = inn.read(buffer);
-							synchronized (downloadedFileSize) {
+							synchronized (sizeLock) {
 								downloadedFileSize += lenRead;
 							}
 						}
