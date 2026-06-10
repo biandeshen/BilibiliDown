@@ -101,6 +101,7 @@ public class DownloadRunnableInternal implements Runnable {
 				if (Global.saveToRepo) {
 					RepoUtil.appendAndSave(record);
 				}
+				DynamicsDB.markDownloaded(downPanel.getClipInfo().getUpId(), avid, realQN);
 				if (Global.thumbUpAfterDownloaded && Global.isLogin && avid.startsWith("BV")) {
 					API.like(avid);
 				}

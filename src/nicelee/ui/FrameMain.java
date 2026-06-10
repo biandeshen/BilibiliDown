@@ -59,7 +59,8 @@ public class FrameMain extends JFrame {
 		// -v 打印版本，然后退出
 		if(args.length == 1 && "-v".equalsIgnoreCase(args[0])) {
 			System.out.println(Global.version);
-			System.exit(0);
+			DynamicsDB.shutdown();
+				System.exit(0);
 		}
 		// 初始化 - 检查对数据文件夹是否有“写”的权限
 		InitCheck.checkFileAccess();
@@ -76,6 +77,7 @@ public class FrameMain extends JFrame {
 			ConfigUtil.createLock();
 			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 				ConfigUtil.deleteLock();
+				DynamicsDB.shutdown();
 			}));
 		}
 		

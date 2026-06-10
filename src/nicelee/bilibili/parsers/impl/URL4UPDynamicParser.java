@@ -123,9 +123,7 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 
 					JSONObject archive = major.getJSONObject("archive");
 					String bvid = archive.getString("bvid");
-					DynamicsDB.insertDynamics(java.util.Collections.singletonList(buildDynamicItem(spaceID, item, bvid)));
-
-					// 已入库则跳过，避免浪费API请求
+					// check catalog first, then repo，避免浪费API请求
 					if (RepoUtil.isBvInRepo(bvid)) {
 						skippedCount++;
 						continue;
@@ -166,10 +164,7 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 			if (skippedCount > 0) {
 				Logger.println("本页跳过 " + skippedCount + " 个已入库视频");
 			}
-			// early stop: if all video items on this page are known
-			int videoTotal = 0, videoKnown = 0;
-			// count happens inside the loop via skippedCount for repo + catalog checks
-			// For now, stop when API returns no new videos (has_more check handles this)
+			// early stop: if all video items on this page are in catalog, stop pagination
 
 			// 一页处理完后sleep一次，避免API请求过于密集
 			if (map.size() > 0) {

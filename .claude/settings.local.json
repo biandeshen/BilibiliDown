@@ -54,7 +54,9 @@
       "Bash(unzip -l \"F:/WorkSpace/BilibiliDown/release/INeedBiliAV_v6.41.jar\")",
       "Bash(curl -L -o \"F:/WorkSpace/BilibiliDown/libs/h2-2.2.224.jar\" \"https://repo1.maven.org/maven2/com/h2database/h2/2.2.224/h2-2.2.224.jar\")",
       "Bash(cp -f \"F:/WorkSpace/BilibiliDown/INeedBiliAV_v6.41.jar\" \"F:/WorkSpace/BilibiliDown/release/\")",
-      "Bash(cp -f \"F:/WorkSpace/BilibiliDown/INeedBiliAV_v6.41.jar\" \"F:/WorkSpace/BilibiliDown/release/INeedBiliAV.jar\")"
+      "Bash(cp -f \"F:/WorkSpace/BilibiliDown/INeedBiliAV_v6.41.jar\" \"F:/WorkSpace/BilibiliDown/release/INeedBiliAV.jar\")",
+      "Bash(git reset *)",
+      "Bash(rm -rf _pkg)"
     ]
   }
 }
