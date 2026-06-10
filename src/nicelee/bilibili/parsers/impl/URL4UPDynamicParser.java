@@ -170,13 +170,54 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 			}
 
 			if (skippedCount > 0) {
-				Logger.println("if (skippedCount > 0) Logger.println("本页跳过 " + skippedCount + " 个已入库视频");
-			// 早停: 整页视频均在目录中
-			if (videoOnPage > 0 && videoKnown >= videoOnPage) {
-				Logger.println("all videos on page known, stop");
-				hasMore = false;
+				Logger.println("本页跳过 " + skippedCount + " 个已入库视频");
 			}
- catch (Exception e) {}
+			// early stop: if all video items on this page are in catalog, stop pagination
+
+			// 一页处理完后sleep一次，避免API请求过于密集
+			if (map.size() > 0) {
+				Thread.sleep(500);
+			}
+
+			// 存储下一页的offset
+			if (hasMore && nextOffset != null && !nextOffset.isEmpty()) {
+				currentOffset = nextOffset;
+			} else {
+				currentOffset = null;
+				if (!isInitialDone) {
+					DynamicsDB.markInitialScanDone(spaceID, pageQueryResult.getAuthor());
+					Logger.println("UP " + spaceID + " full scan complete");
+				}
+			}
+
+		} catch (Exception e) {
+			Logger.println("获取动态列表失败: " + e.getMessage());
+			e.printStackTrace();
+			currentOffset = null;
+		}
+
+		return pageQueryResult;
+	}
+
+	@Override
+	protected boolean query(int page, int min, int max, Object... obj) {
+		return false; // 由覆写的 result() 处理
+	}
+	// Build DynamicItem from modules and insert into DB
+	private void recordDynamicToDB(String uid, String dynamicId, String type, JSONObject modules) {
+		try {
+			DynamicItem di = new DynamicItem();
+			di.setDynamicId(dynamicId);
+			di.setUid(uid);
+			di.setType(type);
+			if (modules != null) {
+				try {
+					JSONObject author = modules.optJSONObject("module_author");
+					if (author != null) {
+						di.setUpName(author.optString("name"));
+						di.setPubTimestamp(author.optLong("pub_ts") * 1000);
+					}
+				} catch (Exception e) {}
 				// 按类型提取信息
 				try {
 					JSONObject major = modules.optJSONObject("module_dynamic");
