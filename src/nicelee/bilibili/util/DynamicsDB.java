@@ -33,8 +33,7 @@ public class DynamicsDB {
 			conn = DriverManager.getConnection(
 				"jdbc:h2:file:" + DB_PATH + ";TRACE_LEVEL_FILE=0", "sa", "");
 			createTables();
-			migrateFromJson();
-			dbAvailable = true;
+				dbAvailable = true;
 			Logger.println("DynamicsDB initialized: " + DB_PATH);
 		} catch (Exception e) {
 			Logger.println("DynamicsDB init failed: " + e.getMessage());
@@ -101,11 +100,7 @@ public class DynamicsDB {
 				"  formatted_title VARCHAR," +
 				"  status INTEGER DEFAULT 0," +
 				"  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
-		// 兼容旧表：补充缺失的列
-		try { st.execute("ALTER TABLE large_file_queue ADD COLUMN avid VARCHAR"); } catch (Exception ignored) {}
-		try { st.execute("ALTER TABLE large_file_queue ADD COLUMN cid VARCHAR"); } catch (Exception ignored) {}
-		try { st.execute("ALTER TABLE large_file_queue ADD COLUMN real_qn INTEGER DEFAULT 0"); } catch (Exception ignored) {}
-		try { st.execute("ALTER TABLE large_file_queue ADD COLUMN page INTEGER DEFAULT 0"); } catch (Exception ignored) {}
+		
 		}
 	}
 
@@ -325,47 +320,7 @@ public class DynamicsDB {
 	}
 
 	// ===== 迁移 =====
-	private static void migrateFromJson() {
-		File catalogDir = new File(ResourcesUtil.baseDirectory(), "config/catalog");
-		if (!catalogDir.exists() || !catalogDir.isDirectory()) return;
-		File[] files = catalogDir.listFiles((d, n) -> n.endsWith(".json"));
-		if (files == null || files.length == 0) return;
 
-		int migrated = 0;
-		for (File f : files) {
-			try {
-				String uid = f.getName().replace(".json", "");
-				StringBuilder sb = new StringBuilder();
-				try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(f), "utf-8"))) {
-					String line; while ((line = r.readLine()) != null) sb.append(line);
-				}
-				JSONArray bvids = new JSONObject(sb.toString()).getJSONArray("bvids");
-				String sql = "MERGE INTO up_dynamics (dynamic_id, uid, type, bvid, updated_at) VALUES (?,?,?,?,CURRENT_TIMESTAMP)";
-				try (PreparedStatement ps = conn.prepareStatement(sql)) {
-					for (int i = 0; i < bvids.length(); i++) {
-						String bvid = bvids.getString(i);
-						ps.setString(1, uid + "_" + bvid); // 合成唯一ID
-						ps.setString(2, uid);
-						ps.setString(3, "AV");
-						ps.setString(4, bvid);
-						ps.addBatch();
-					}
-					ps.executeBatch();
-				}
-				// 标记为已全扫
-				try (PreparedStatement ps = conn.prepareStatement(
-						"MERGE INTO up_status (uid, initial_scan_done, updated_at) VALUES (?,1,CURRENT_TIMESTAMP)")) {
-					ps.setString(1, uid);
-					ps.executeUpdate();
-				}
-				f.renameTo(new File(catalogDir, f.getName() + ".migrated"));
-				migrated++;
-			} catch (Exception e) {
-				Logger.println("Migration failed for " + f.getName() + ": " + e.getMessage());
-			}
-		}
-		if (migrated > 0) Logger.println("DynamicsDB: migrated " + migrated + " catalog files");
-	}
 
 	// ===== 大文件待确认项 =====
 	public static class LargeFileItem {
