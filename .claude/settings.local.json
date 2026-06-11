@@ -56,7 +56,22 @@
       "Bash(cp -f \"F:/WorkSpace/BilibiliDown/INeedBiliAV_v6.41.jar\" \"F:/WorkSpace/BilibiliDown/release/\")",
       "Bash(cp -f \"F:/WorkSpace/BilibiliDown/INeedBiliAV_v6.41.jar\" \"F:/WorkSpace/BilibiliDown/release/INeedBiliAV.jar\")",
       "Bash(git reset *)",
-      "Bash(rm -rf _pkg)"
+      "Bash(rm -rf _pkg)",
+      "Bash(echo compile=$? *)",
+      "PowerShell(& \"F:\\\\WorkSpace\\\\BilibiliDown\\\\package.bat\")",
+      "Bash(javac -encoding UTF-8 -cp _pkg -d _pkg _pkg/nicelee/bilibili/parsers/impl/URL4UPDynamicParser.java)",
+      "Bash(rm -f \"F:/WorkSpace/BilibiliDown/.git/index.lock\")",
+      "Bash(echo \"ec=$?\")",
+      "Bash(unzip -l \"F:/WorkSpace/BilibiliDown/release/INeedBiliAV.jar\")",
+      "Bash(cp -f INeedBiliAV_v6.41.jar release/INeedBiliAV.jar)",
+      "Bash(unzip -l release/INeedBiliAV.jar)",
+      "Bash(unzip -l \"F:/WorkSpace/BilibiliDown/INeedBiliAV_v6.41.jar\")",
+      "Bash(unzip -l INeedBiliAV_v6.41.jar)",
+      "PowerShell($proc = Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c\", \"cd /d F:\\\\WorkSpace\\\\BilibiliDown && package.bat\" -Wait -NoNewWindow -PassThru; \"exit=$\\($proc.ExitCode\\)\")",
+      "Bash(cmd /c \"package.bat < nul\")",
+      "Bash(cmd /c package.bat)",
+      "PowerShell($p = Start-Process -FilePath \"F:\\\\WorkSpace\\\\BilibiliDown\\\\package.bat\" -WorkingDirectory \"F:\\\\WorkSpace\\\\BilibiliDown\" -Wait -NoNewWindow -PassThru 2>&1; \"exit=$\\($p.ExitCode\\)\")",
+      "PowerShell($p = Start-Process -FilePath \"F:\\\\WorkSpace\\\\BilibiliDown\\\\package.bat\" -WorkingDirectory \"F:\\\\WorkSpace\\\\BilibiliDown\" -Wait -NoNewWindow -PassThru; \"exit=$\\($p.ExitCode\\)\")"
     ]
   }
 }

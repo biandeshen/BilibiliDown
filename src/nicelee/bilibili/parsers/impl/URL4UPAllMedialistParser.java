@@ -189,7 +189,8 @@ public class URL4UPAllMedialistParser extends AbstractPageQueryParser<VideoInfo>
 				withCurrent = false; // 接下来的查询不需要包括定位的 oid
 				String json = util.getContent(url, headers);
 				JSONObject jobj = new JSONObject(json);
-				JSONArray arr = jobj.getJSONObject("data").getJSONArray("media_list");
+				JSONArray arr = jobj.getJSONObject("data").optJSONArray("media_list");
+					if (arr == null || arr.length() == 0) break;
 				
 				if (pageQueryResult.getVideoPreview() == null) {
 					pageQueryResult.setVideoPreview(arr.getJSONObject(0).getString("cover"));
