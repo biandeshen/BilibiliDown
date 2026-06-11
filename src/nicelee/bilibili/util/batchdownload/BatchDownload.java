@@ -49,22 +49,16 @@ public class BatchDownload implements Cloneable {
 	 * 将 /video/ 类型的URL替换为 /dynamic（动态流包含投稿视频+专属动态视频，一次API覆盖全部）
 	 */
 	public static void replaceVideoWithDynamic(List<BatchDownload> batches) {
-		List<BatchDownload> extras = new ArrayList<>();
 		for (BatchDownload batch : batches) {
 			if (!"url".equals(batch.getType()))
 				continue;
 			Matcher m = videoUrlPattern.matcher(batch.getUrl());
 			if (m.find()) {
-				try {
-					BatchDownload copy = (BatchDownload) batch.clone();
-					copy.setUrl(batch.getUrl().replaceAll("/video[/]?.*", "/dynamic"));
-					copy.setRemark(batch.getRemark() + "-dynamic");
-					extras.add(copy);
-					Logger.println("append dynamic: " + copy.getUrl());
-				} catch (CloneNotSupportedException e) { e.printStackTrace(); }
+				String newUrl = batch.getUrl().replaceAll("/video[/]?.*", "/dynamic");
+				Logger.println("replace /video with /dynamic: " + batch.getUrl() + " -> " + newUrl);
+				batch.setUrl(newUrl);
 			}
 		}
-		batches.addAll(extras);
 	}
 
 
