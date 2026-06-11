@@ -31,7 +31,8 @@ public class DynamicsDB {
 			Class.forName("org.h2.Driver");
 			// 清理残留 lock 文件
 			new File(DB_PATH + ".lock.db").delete();
-			try { org.h2.tools.Server.createWebServer("-webPort", "8082").start(); } catch (Exception e) { Logger.println("H2 WebServer: " + e.getMessage()); }
+			try { org.h2.tools.Server.createWebServer("-webPort", "8082").start();
+		org.h2.tools.Server.createTcpServer("-tcpPort", "9092").start(); } catch (Exception e) { Logger.println("H2 WebServer: " + e.getMessage()); }
 				conn = DriverManager.getConnection(
 				"jdbc:h2:file:" + DB_PATH + ";TRACE_LEVEL_FILE=0;AUTO_SERVER=TRUE", "sa", "");
 			createTables();
