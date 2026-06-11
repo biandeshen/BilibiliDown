@@ -110,8 +110,8 @@ public class DynamicsDB {
 	}
 
 	// ===== 大文件队列 =====
-	public static synchronized void insertLargeFile(String uid, String upName, String bvid, String avid, String cid, int realQN, int page,
-			String avTitle, String cover, long estimatedSize, String urlQuery, int qn, String formattedTitle, int _realQN, int _page) {
+	public static synchronized void insertLargeFile(String uid, String upName, String bvid,
+			String avTitle, String cover, long estimatedSize, String urlQuery, int qn, String formattedTitle) {
 		if (!dbAvailable) return;
 		try (PreparedStatement ps = conn.prepareStatement(
 				"INSERT INTO large_file_queue (uid, up_name, bvid, av_title, cover, estimated_size, url_query, qn, formatted_title)" +

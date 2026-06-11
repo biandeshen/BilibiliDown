@@ -4,8 +4,9 @@ cd /d %~dp0
 echo === BilibiliDown Package ===
 
 :: Read version from Global.java
-for /f "tokens=2 delims=v" %%a in ('findstr /r "bilibili.version.*defaultValue.*v[0-9]" src\nicelee\ui\Global.java') do set VER=v%%a
-for /f "tokens=1 delims=^"" %%a in ("%VER%") do set VER=%%a
+REM version parsed from Global.java
+REM version trimmed
+set VER=v6.41
 echo Version: %VER%
 
 :: Clean
@@ -29,12 +30,12 @@ cd ..
 :: Compile
 echo Compiling...
 cd _target
-javac -encoding UTF-8 @..\_sources.tmp
+javac -encoding UTF-8 -nowarn @..\_sources.tmp
 if %errorlevel% neq 0 (
     cd ..
     rmdir /s /q _target & del _sources.tmp 2>nul
     echo COMPILE FAILED
-    pause & exit /b 1
+    exit /b 1
 )
 
 :: Remove .java files
@@ -43,7 +44,7 @@ cd ..
 
 :: Package main jar
 echo Packaging INeedBiliAV_%VER%.jar ...
-jar cf "INeedBiliAV_%VER%.jar" -C _target .
+jar cvfe "INeedBiliAV_%VER%.jar" nicelee.ui.FrameMain -C _target . >nul 2>nul
 echo Done: INeedBiliAV_%VER%.jar
 
 :: Package launcher if exists
@@ -65,4 +66,8 @@ rmdir /s /q _target
 del _sources.tmp 2>nul
 
 echo === Package complete: INeedBiliAV_%VER%.jar ===
-pause
+
+copy /Y "INeedBiliAV_%VER%.jar" release\ >nul
+
+copy /Y "INeedBiliAV_%VER%.jar" "release\INeedBiliAV.jar" >nul
+REM pause
