@@ -401,6 +401,10 @@ public class BatchDownload implements Cloneable {
 				Thread.sleep(Global.sleepBetweenPages);
 			} catch (Exception e) { e.printStackTrace(); break; }
 		}
+		// 等活跃下载降到阈值以下再处理下一个UP
+		while (Global.downloadTab != null && Global.downloadTab.activeTask > Global.maxConcurrentUp) {
+			try { Thread.sleep(5000); } catch (InterruptedException e) { break; }
+		}
 		try { Thread.sleep(Global.sleepBetweenBatches); } catch (InterruptedException e) {}
 	}
 

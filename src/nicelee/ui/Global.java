@@ -101,6 +101,8 @@ public class Global {
 	public static long sleepBetweenBatches;
 	@Config(key = "bilibili.download.period.between.cycles", note = "实时下载轮次间等待时间(ms)", defaultValue = "1800000", multiply = 1)
 	public static long sleepBetweenCycles;
+	@Config(key = "bilibili.download.maxConcurrentUp", note = "实时下载时最多同时处理几个UP主", defaultValue = "2", multiply = 1)
+	public static int maxConcurrentUp;
 	@Config(key = "bilibili.download.largeFileThreshold", note = "大文件提醒阈值(MB), 0为不提醒", defaultValue = "500", multiply = 1024 * 1024)
 	public static long largeFileThreshold;
 	@Config(key = "bilibili.download.period.between.query", note = "每个关于下载的查询任务完成后的等待时间(ms)", defaultValue = "0", multiply = 1)
