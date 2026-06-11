@@ -31,7 +31,7 @@ public class DynamicsDB {
 			// 清理残留 lock 文件
 			new File(DB_PATH + ".lock.db").delete();
 			conn = DriverManager.getConnection(
-				"jdbc:h2:file:" + DB_PATH + ";TRACE_LEVEL_FILE=0", "sa", "");
+				"jdbc:h2:file:" + DB_PATH + ";TRACE_LEVEL_FILE=0;AUTO_SERVER=TRUE", "sa", "");
 			createTables();
 				dbAvailable = true;
 			Logger.println("DynamicsDB initialized: " + DB_PATH);
