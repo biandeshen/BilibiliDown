@@ -175,7 +175,7 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 			}
 
 			if (skippedCount > 0) Logger.println("本页跳过 " + skippedCount + " 个已入库视频");
-			if (videoOnPage > 0 && videoKnown >= videoOnPage) {
+			if (isInitialDone && videoOnPage > 0 && videoKnown >= videoOnPage) {
 				Logger.println("all videos on page known, stop pagination");
 				hasMore = false;
 			}
