@@ -9,7 +9,8 @@ public class VideoInfo {
 	String authorId;
 	String videoPreview;
 	String brief;
-	LinkedHashMap<Long, ClipInfo> clips;// 未使用 Integer 为 Page
+	LinkedHashMap<Long, ClipInfo> clips;
+	boolean hasMorePages = false;
 	String videoLink;
 
 	public void print() {
@@ -99,5 +100,7 @@ public class VideoInfo {
 	public void setClips(LinkedHashMap<Long, ClipInfo> clips) {
 		this.clips = clips;
 	}
+	public boolean getHasMorePages() { return hasMorePages; }
+	public void setHasMorePages(boolean hasMorePages) { this.hasMorePages = hasMorePages; }
 
 }

@@ -116,8 +116,8 @@ public class DownloadRunnable implements Runnable {
 				}
 				if (estSize > Global.largeFileThreshold) {
 					String formattedTitle = CmdUtil.genFormatedName(avInfo, clip, realQN);
-					DynamicsDB.insertLargeFile(avid, clip.getUpName(), avid, clip.getAvTitle(),
-						clip.getPicPreview(), estSize, urlQuery, qn, formattedTitle);
+					DynamicsDB.insertLargeFile(clip.getUpId(), clip.getUpName(), avid, avid, cid, realQN, clip.getPage(),
+						clip.getAvTitle(), clip.getPicPreview(), estSize, urlQuery, qn, formattedTitle);
 					Logger.println("Large file pending: " + clip.getAvTitle());
 					return;
 				}

@@ -379,7 +379,7 @@ public class BatchDownload implements Cloneable {
 			try {
 				VideoInfo avInfo = ina.getVideoDetail(sp, Global.downloadFormat, false);
 				java.util.Collection<ClipInfo> clips = avInfo.getClips().values();
-				if (clips.size() == 0) break;
+				if (clips.size() == 0 && !avInfo.getHasMorePages()) break;
 				for (ClipInfo clip : clips) {
 					if (batch.matchStopCondition(clip, page)) {
 						if (batch.isIncludeBoundsBV() && batch.matchDownloadCondition(clip, page)) {

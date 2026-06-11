@@ -106,21 +106,21 @@ st.execute(
 	}
 
 	// ===== 大文件队列 =====
-	public static synchronized void insertLargeFile(String uid, String upName, String bvid,
+	public static synchronized void insertLargeFile(String uid, String upName, String bvid, String avid, String cid, int realQN, int page,
 			String avTitle, String cover, long estimatedSize, String urlQuery, int qn, String formattedTitle) {
 		if (!dbAvailable) return;
 		try (PreparedStatement ps = conn.prepareStatement(
-				"INSERT INTO large_file_queue (uid, up_name, bvid, av_title, cover, estimated_size, url_query, qn, formatted_title)" +
-				" VALUES (?,?,?,?,?,?,?,?,?)")) {
+				"INSERT INTO large_file_queue (uid, up_name, bvid, avid, cid, real_qn, page, av_title, cover, estimated_size, url_query, qn, formatted_title)" +
+				" VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
 			ps.setString(1, uid);
 			ps.setString(2, upName);
 			ps.setString(3, bvid);
 			ps.setString(4, avTitle);
-			ps.setString(5, cover);
-			ps.setLong(6, estimatedSize);
-			ps.setString(7, urlQuery);
-			ps.setInt(8, qn);
-			ps.setString(9, formattedTitle);
+			ps.setString(9, cover);
+			ps.setLong(10, estimatedSize);
+			ps.setString(11, urlQuery);
+			ps.setInt(12, qn);
+			ps.setString(13, formattedTitle);
 			ps.executeUpdate();
 		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
 	}

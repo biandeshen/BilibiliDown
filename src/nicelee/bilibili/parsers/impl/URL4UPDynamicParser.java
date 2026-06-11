@@ -101,6 +101,7 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 			JSONArray items = data.getJSONArray("items");
 			String nextOffset = data.optString("offset", "");
 			boolean hasMore = data.optBoolean("has_more", false);
+			pageQueryResult.setHasMorePages(hasMore);
 
 			LinkedHashMap<Long, ClipInfo> map = pageQueryResult.getClips();
 			int clipIndex = (page - 1) * API_PMAX;
