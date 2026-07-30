@@ -36,8 +36,8 @@ public class DynamicsDB {
 				conn = DriverManager.getConnection(
 				"jdbc:h2:file:" + DB_PATH + ";TRACE_LEVEL_FILE=0;AUTO_SERVER=TRUE", "sa", "");
 			createTables();
+			dbAvailable = true;
 			migrateSchema();
-				dbAvailable = true;
 			Logger.println("DynamicsDB initialized: " + DB_PATH);
 		} catch (Exception e) {
 			Logger.println("DynamicsDB init failed: " + e.getMessage());
@@ -436,14 +436,19 @@ st.execute(
 			ResultSet rs = stmt.executeQuery(
 				"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
 				"WHERE TABLE_NAME='BATCH_SCAN_STATUS' AND COLUMN_NAME='LAST_SCANNED_PAGE'");
-			if (!rs.next()) {
+			boolean hasLastScannedPage = rs.next();
+			rs.close();
+			if (!hasLastScannedPage) {
 				stmt.execute("ALTER TABLE batch_scan_status ADD COLUMN last_scanned_page INT DEFAULT 0");
 				Logger.println("Schema迁移: 添加 last_scanned_page 字段");
 			}
+			// 检查并添加 start_page_snapshot
 			rs = stmt.executeQuery(
 				"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
 				"WHERE TABLE_NAME='BATCH_SCAN_STATUS' AND COLUMN_NAME='START_PAGE_SNAPSHOT'");
-			if (!rs.next()) {
+			boolean hasStartPageSnapshot = rs.next();
+			rs.close();
+			if (!hasStartPageSnapshot) {
 				stmt.execute("ALTER TABLE batch_scan_status ADD COLUMN start_page_snapshot INT DEFAULT 0");
 				Logger.println("Schema迁移: 添加 start_page_snapshot 字段");
 			}
