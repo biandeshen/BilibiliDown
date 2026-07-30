@@ -198,6 +198,40 @@ public class HttpRequestUtil {
 //			}
 			// 获取所有响应头字段
 			Map<String, List<String>> map = conn.getHeaderFields();
+			// 处理416 Range Not Satisfiable: 通常是.part文件已下载完整但未被重命名
+			if (conn.getResponseCode() == 416) {
+				System.out.println("收到416响应，当前Range: " + headers.get("range"));
+				// 从Content-Range头获取服务器端文件实际大小，格式: bytes */{totalSize}
+				List<String> contentRange = map.get("Content-Range");
+				if (contentRange == null)
+					contentRange = map.get("content-range");
+				long actualSize = -1;
+				if (contentRange != null) {
+					String cr = contentRange.get(0);
+					int idx = cr.lastIndexOf('/');
+					if (idx >= 0) {
+						try {
+							actualSize = Long.parseLong(cr.substring(idx + 1).trim());
+						} catch (Exception ignored) {}
+					}
+				}
+				System.out.println(".part文件大小: " + fileDownloadPart.length() + ", 服务器文件大小: " + actualSize);
+				conn.disconnect();
+				if (actualSize >= 0 && fileDownloadPart.length() >= actualSize) {
+					// .part文件已下载完整，重命名为最终文件
+					raf.close();
+					raf = null;
+					fileDownloadPart.renameTo(fileDownload);
+					System.out.println("下载完毕...(416判定完成)");
+					status = StatusEnum.SUCCESS;
+					return true;
+				}
+				// .part文件大小异常，删除后抛出异常，下次重试将从头下载
+				raf.close();
+				raf = null;
+				fileDownloadPart.delete();
+				throw new IOException("416 Range Not Satisfiable，.part文件异常已删除，请重试下载");
+			}
 			// 遍历所有的响应头字段
 //			for (String key : map.keySet()) {
 //				System.out.println(key + "--->" + map.get(key));
