@@ -21,6 +21,10 @@ simplelogger.properties
 /config
 /release/ffmpeg
 # /release/config intentionally NOT ignored - all files tracked
+/release/config/dynamics.mv.db
+/release/config/dynamics.lock.db
+/release/config/dynamics.trace.db
+.mimocode/
 /release/zip
 /release/wiki
 /release/parsers1
