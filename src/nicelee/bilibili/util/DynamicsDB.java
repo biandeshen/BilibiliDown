@@ -92,6 +92,10 @@ st.execute(
 				"  uid VARCHAR," +
 				"  up_name VARCHAR," +
 				"  bvid VARCHAR," +
+				"  avid VARCHAR," +
+				"  cid VARCHAR," +
+				"  real_qn INTEGER," +
+				"  page INTEGER," +
 				"  av_title VARCHAR," +
 				"  cover VARCHAR," +
 				"  estimated_size BIGINT," +
@@ -125,7 +129,11 @@ st.execute(
 			ps.setString(1, uid);
 			ps.setString(2, upName);
 			ps.setString(3, bvid);
-			ps.setString(4, avTitle);
+			ps.setString(4, avid);
+			ps.setString(5, cid);
+			ps.setInt(6, realQN);
+			ps.setInt(7, page);
+			ps.setString(8, avTitle);
 			ps.setString(9, cover);
 			ps.setLong(10, estimatedSize);
 			ps.setString(11, urlQuery);
@@ -139,8 +147,8 @@ st.execute(
 		List<LargeFileItem> list = new ArrayList<>();
 		if (!dbAvailable) return list;
 		try (PreparedStatement ps = conn.prepareStatement(
-				"SELECT id, uid, up_name, bvid, avid, cid, av_title, cover, estimated_size, url_query, qn, real_qn, page, formatted_title, status," +
-				" avid, cid, real_qn, page" +
+				"SELECT id, uid, up_name, bvid, avid, cid, real_qn, page, av_title, cover," +
+				" estimated_size, url_query, qn, formatted_title, status" +
 				" FROM large_file_queue WHERE status=0 ORDER BY id")) {
 			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
@@ -149,17 +157,17 @@ st.execute(
 				item.uid = rs.getString(2);
 				item.upName = rs.getString(3);
 				item.bvid = rs.getString(4);
-				item.avTitle = rs.getString(5);
-				item.cover = rs.getString(6);
-				item.estimatedSize = rs.getLong(7);
-				item.urlQuery = rs.getString(8);
-				item.qn = rs.getInt(9);
-				item.formattedTitle = rs.getString(10);
-				item.status = rs.getInt(11);
-				item.avid = rs.getString(12);
-				item.cid = rs.getString(13);
-				item.realQN = rs.getInt(14);
-				item.page = rs.getInt(15);
+				item.avid = rs.getString(5);
+				item.cid = rs.getString(6);
+				item.realQN = rs.getInt(7);
+				item.page = rs.getInt(8);
+				item.avTitle = rs.getString(9);
+				item.cover = rs.getString(10);
+				item.estimatedSize = rs.getLong(11);
+				item.urlQuery = rs.getString(12);
+				item.qn = rs.getInt(13);
+				item.formattedTitle = rs.getString(14);
+				item.status = rs.getInt(15);
 				list.add(item);
 			}
 		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); }
@@ -432,29 +440,49 @@ st.execute(
 	private static void migrateSchema() {
 		if (!dbAvailable) return;
 		try (Statement stmt = conn.createStatement()) {
-			// 检查并添加 last_scanned_page
-			ResultSet rs = stmt.executeQuery(
-				"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
-				"WHERE TABLE_NAME='BATCH_SCAN_STATUS' AND COLUMN_NAME='LAST_SCANNED_PAGE'");
-			boolean hasLastScannedPage = rs.next();
-			rs.close();
-			if (!hasLastScannedPage) {
+			// 检查并添加 batch_scan_status.last_scanned_page
+			if (!columnExists(stmt, "BATCH_SCAN_STATUS", "LAST_SCANNED_PAGE")) {
 				stmt.execute("ALTER TABLE batch_scan_status ADD COLUMN last_scanned_page INT DEFAULT 0");
-				Logger.println("Schema迁移: 添加 last_scanned_page 字段");
+				Logger.println("Schema迁移: 添加 batch_scan_status.last_scanned_page");
 			}
-			// 检查并添加 start_page_snapshot
-			rs = stmt.executeQuery(
-				"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
-				"WHERE TABLE_NAME='BATCH_SCAN_STATUS' AND COLUMN_NAME='START_PAGE_SNAPSHOT'");
-			boolean hasStartPageSnapshot = rs.next();
-			rs.close();
-			if (!hasStartPageSnapshot) {
+			// 检查并添加 batch_scan_status.start_page_snapshot
+			if (!columnExists(stmt, "BATCH_SCAN_STATUS", "START_PAGE_SNAPSHOT")) {
 				stmt.execute("ALTER TABLE batch_scan_status ADD COLUMN start_page_snapshot INT DEFAULT 0");
-				Logger.println("Schema迁移: 添加 start_page_snapshot 字段");
+				Logger.println("Schema迁移: 添加 batch_scan_status.start_page_snapshot");
+			}
+			// 检查并添加 large_file_queue.avid
+			if (!columnExists(stmt, "LARGE_FILE_QUEUE", "AVID")) {
+				stmt.execute("ALTER TABLE large_file_queue ADD COLUMN avid VARCHAR");
+				Logger.println("Schema迁移: 添加 large_file_queue.avid");
+			}
+			// 检查并添加 large_file_queue.cid
+			if (!columnExists(stmt, "LARGE_FILE_QUEUE", "CID")) {
+				stmt.execute("ALTER TABLE large_file_queue ADD COLUMN cid VARCHAR");
+				Logger.println("Schema迁移: 添加 large_file_queue.cid");
+			}
+			// 检查并添加 large_file_queue.real_qn
+			if (!columnExists(stmt, "LARGE_FILE_QUEUE", "REAL_QN")) {
+				stmt.execute("ALTER TABLE large_file_queue ADD COLUMN real_qn INT");
+				Logger.println("Schema迁移: 添加 large_file_queue.real_qn");
+			}
+			// 检查并添加 large_file_queue.page
+			if (!columnExists(stmt, "LARGE_FILE_QUEUE", "PAGE")) {
+				stmt.execute("ALTER TABLE large_file_queue ADD COLUMN page INT");
+				Logger.println("Schema迁移: 添加 large_file_queue.page");
 			}
 		} catch (SQLException e) {
 			Logger.println("Schema迁移失败(可忽略): " + e.getMessage());
-			// 迁移失败不设置 dbAvailable=false，可能是字段已存在等非致命错误
+		}
+	}
+
+	/**
+	 * 判断指定表的列是否存在（幂等迁移辅助）
+	 */
+	private static boolean columnExists(Statement stmt, String tableName, String columnName) throws SQLException {
+		try (ResultSet rs = stmt.executeQuery(
+				"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
+				"WHERE TABLE_NAME='" + tableName + "' AND COLUMN_NAME='" + columnName + "'")) {
+			return rs.next();
 		}
 	}
 
