@@ -442,12 +442,10 @@ public class BatchDownload implements Cloneable {
 			}
 		}
 
-		// 全量遍历完成判定：自然结束 或 命中停止边界 或 连续异常中断（已扫描部分足够）
-		// 核心改动：扫描完成与下载成功解耦——即使有视频下载失败，只要页面遍历过就标记完成
-		if (!isIncremental && (naturalEnd || stopFlag || consecutiveErrors >= MAX_CONSECUTIVE_ERRORS)) {
+		// 自然结束 + 非 stopCondition 中断 → 标记完成
+		if (!isIncremental && naturalEnd && !stopFlag) {
 			DynamicsDB.markBatchScanDone(entryKey);
-			String reason = naturalEnd ? "自然结束" : (stopFlag ? "命中边界" : "连续异常中断");
-			logger.info("[全量遍历完成] {} {}，后续运行将进入增量模式", entryKey, reason);
+			logger.info("[全量遍历完成] {} 后续运行将进入增量模式", entryKey);
 		}
 
 		// 等活跃下载降到阈值以下再处理下一个UP
