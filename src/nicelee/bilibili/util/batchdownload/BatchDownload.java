@@ -413,7 +413,10 @@ public class BatchDownload implements Cloneable {
 		while (!stopFlag) {
 			if (!isPageable && page >= 2) {
 				// 非分页URL只有1页，处理完即自然结束
-				naturalEnd = true;
+				// 但因异常导致page++到2时不应视为自然结束（consecutiveErrors>0）
+				if (consecutiveErrors == 0) {
+					naturalEnd = true;
+				}
 				break;
 			}
 			String sp = validStr + " p=" + page;
