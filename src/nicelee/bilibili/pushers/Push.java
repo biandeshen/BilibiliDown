@@ -11,7 +11,11 @@ import nicelee.bilibili.pushers.impl.SimplePrintPush;
 import nicelee.bilibili.util.Logger;
 import nicelee.ui.Global;
 
+import org.slf4j.LoggerFactory;
+
 public class Push {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(Push.class);
 
 	private static Map<String, IPush> pusherMap;
 
@@ -28,7 +32,7 @@ public class Push {
 							pusherMap.put(push.type(), push);
 						}
 					} catch (Exception e) {
-						e.printStackTrace();
+						logger.error("异常", e);
 					}
 				}
 			}

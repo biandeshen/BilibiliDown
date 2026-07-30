@@ -10,7 +10,12 @@ import javax.sound.sampled.Clip;
 
 import nicelee.bilibili.util.ResourcesUtil;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class Audio {
+
+	private static final Logger logger = LoggerFactory.getLogger(Audio.class);
 
 	static byte[] data;
 	static AudioFormat format;
@@ -39,7 +44,7 @@ public class Audio {
 			out.close();
 			in.close();
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 
 	}
@@ -53,7 +58,7 @@ public class Audio {
 				clip.open(format, data, 0, length);
 				clip.start();
 			} catch (Exception e) {
-				e.printStackTrace();
+				logger.error("异常", e);
 			}
 		}
 	}

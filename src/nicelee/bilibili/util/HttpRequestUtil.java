@@ -29,7 +29,11 @@ import nicelee.bilibili.enums.StatusEnum;
 import nicelee.bilibili.exceptions.Status412Exception;
 import nicelee.ui.Global;
 
+import org.slf4j.LoggerFactory;
+
 public class HttpRequestUtil {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(HttpRequestUtil.class);
 
 	protected static CookieManager defaultManager = new CookieManager();
 	// 下载缓存区
@@ -139,7 +143,7 @@ public class HttpRequestUtil {
 		fileDownload = getFile(fileName);
 		File fileDst = new File(fileDownload.getParent(),
 				fileDownload.getName().replaceAll("_(video|audio)", "").replaceAll("\\.m4s$", ".mp4"));
-		System.out.println(fileDst.getName());
+		logger.info("{}", fileDst.getName());
 		// 如果av1234-64-p4.flv已下完， 那么av1234-64-p4-part1.flv这种也不是必须的
 		Matcher ma = filePartPattern.matcher(fileDst.getName());
 		if (ma.find()) {
@@ -200,7 +204,7 @@ public class HttpRequestUtil {
 			Map<String, List<String>> map = conn.getHeaderFields();
 			// 处理416 Range Not Satisfiable: 通常是.part文件已下载完整但未被重命名
 			if (conn.getResponseCode() == 416) {
-				System.out.println("收到416响应，当前Range: " + headers.get("range"));
+				logger.info("收到416响应，当前Range: " + headers.get("range"));
 				// 从Content-Range头获取服务器端文件实际大小，格式: bytes */{totalSize}
 				List<String> contentRange = map.get("Content-Range");
 				if (contentRange == null)
@@ -215,14 +219,14 @@ public class HttpRequestUtil {
 						} catch (Exception ignored) {}
 					}
 				}
-				System.out.println(".part文件大小: " + fileDownloadPart.length() + ", 服务器文件大小: " + actualSize);
+				logger.info(".part文件大小: " + fileDownloadPart.length() + ", 服务器文件大小: " + actualSize);
 				conn.disconnect();
 				if (actualSize >= 0 && fileDownloadPart.length() >= actualSize) {
 					// .part文件已下载完整，重命名为最终文件
 					raf.close();
 					raf = null;
 					fileDownloadPart.renameTo(fileDownload);
-					System.out.println("下载完毕...(416判定完成)");
+					logger.info("下载完毕...(416判定完成)");
 					status = StatusEnum.SUCCESS;
 					return true;
 				}
@@ -239,19 +243,19 @@ public class HttpRequestUtil {
 			List<String> conLen = map.get("Content-Length");
 			if(conLen == null)
 				conLen = map.get("content-length");
-			System.out.printf("文件大小: %s 字节.\r\n", conLen);
+			logger.info(String.format("文件大小: %s 字节.\r\n", conLen));
 
 			if(conLen != null)
 				totalFileSize = offset + Long.parseUnsignedLong(conLen.get(0));
 			try {
 				inn = conn.getInputStream();
 			} catch (Exception e) {
-				e.printStackTrace();
+				logger.error("异常", e);
 				Logger.println(headers.get("range"));
 				BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "utf-8"));
 				String temp;
 				while ((temp = reader.readLine()) != null) {
-					System.out.println(temp);
+					logger.info("{}", temp);
 				}
 				reader.close();
 				throw e;
@@ -273,11 +277,11 @@ public class HttpRequestUtil {
 				download(urlNameString, fileName, headers);
 			} else {
 				fileDownloadPart.renameTo(fileDownload);
-				System.out.println("下载完毕...");
+				logger.info("下载完毕...");
 			}
 		} catch (Exception e) {
-			System.out.println("发送GET请求出现异常！" + e);
-			e.printStackTrace();
+			logger.info("发送GET请求出现异常！" + e);
+			logger.error("异常", e);
 			status = StatusEnum.FAIL;
 			return false;
 		}
@@ -343,7 +347,7 @@ public class HttpRequestUtil {
 			offset = fileDownloadPart.length();
 			// total = getfileSize(url, headers);
 			headers.put("range", "bytes=" + offset + "-");// + (total - 1)
-			System.out.println("当前已下载: [" + offset + "]字节");
+			logger.info("当前已下载: [" + offset + "]字节");
 			raf.seek(offset);
 		}
 		return offset;
@@ -392,8 +396,8 @@ public class HttpRequestUtil {
 		} catch (Status412Exception e) {
 			throw e;
 		} catch (Exception e) {
-			System.out.println("发送GET请求出现异常！" + e);
-			e.printStackTrace();
+			logger.info("发送GET请求出现异常！" + e);
+			logger.error("异常", e);
 		} finally {
 			ResourcesUtil.closeQuietly(in);
 		}
@@ -452,7 +456,7 @@ public class HttpRequestUtil {
 		} catch (Status412Exception e) {
 			throw e;
 		} catch (Exception e) {
-			System.out.println("发送POST请求出现异常！" + e);
+			logger.info("发送POST请求出现异常！" + e);
 		} finally {
 			ResourcesUtil.closeQuietly(in);
 		}
@@ -476,7 +480,7 @@ public class HttpRequestUtil {
 			conn.connect();
 			return conn.getResponseCode() != 404;
 		} catch (Exception e) {
-			System.out.println("发送GET请求出现异常！" + e);
+			logger.info("发送GET请求出现异常！" + e);
 			return false;
 		} finally {
 			ResourcesUtil.closeQuietly(in);

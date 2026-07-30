@@ -39,7 +39,11 @@ import nicelee.bilibili.INeedAV;
 import nicelee.bilibili.model.ClipInfo;
 import nicelee.bilibili.model.VideoInfo;
 
+import org.slf4j.LoggerFactory;
+
 public class FrameMain extends JFrame {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(FrameMain.class);
 
 	/**
 	 * 
@@ -49,16 +53,16 @@ public class FrameMain extends JFrame {
 	MJTitleBar titleBar;// 标题栏组件
 
 	public static void main(String[] args) {
-		System.out.println();
+		logger.info("");
 		// System.getProperties().setProperty("file.encoding", "utf-8");
 		boolean isFFmpegSupported = SysUtil.surportFFmpegOfficially();
-		System.out.println("Java version:" + System.getProperty("java.specification.version"));
-		System.out.println(ResourcesUtil.baseDirectory());
+		logger.info("Java version:" + System.getProperty("java.specification.version"));
+		logger.info("{}", ResourcesUtil.baseDirectory());
 		// 读取配置文件
 		ConfigUtil.initConfigs();
 		// -v 打印版本，然后退出
 		if(args.length == 1 && "-v".equalsIgnoreCase(args[0])) {
-			System.out.println(Global.version);
+			logger.info("{}", Global.version);
 			DynamicsDB.shutdown();
 				System.exit(0);
 		}
@@ -145,7 +149,7 @@ public class FrameMain extends JFrame {
 				}
 			}).start();
 		}
-		System.out.println("如果过度界面显示时间过长，可双击跳过");
+		logger.info("如果过度界面显示时间过长，可双击跳过");
 		try {
 			while (Global.frWaiting.isVisible()) {
 				Thread.sleep(1000);
@@ -177,7 +181,7 @@ public class FrameMain extends JFrame {
 				}
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 

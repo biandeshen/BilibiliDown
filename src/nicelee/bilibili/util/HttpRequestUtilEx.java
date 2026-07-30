@@ -17,7 +17,11 @@ import java.util.regex.Matcher;
 import nicelee.bilibili.enums.StatusEnum;
 import nicelee.ui.Global;
 
+import org.slf4j.LoggerFactory;
+
 public class HttpRequestUtilEx extends HttpRequestUtil {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(HttpRequestUtilEx.class);
 	private final Object sizeLock = new Object();
 
 	
@@ -103,12 +107,12 @@ public class HttpRequestUtilEx extends HttpRequestUtil {
 						try {
 							inn = conn.getInputStream();
 						} catch (Exception e) {
-							e.printStackTrace();
+							logger.error("异常", e);
 							Logger.println(specificHeader.get("range"));
 							BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "utf-8"));
 							String temp;
 							while ((temp = reader.readLine()) != null) {
-								System.out.println(temp);
+								logger.info("{}", temp);
 							}
 							reader.close();
 							throw e;
@@ -134,8 +138,8 @@ public class HttpRequestUtilEx extends HttpRequestUtil {
 						}
 						raf.close();
 					} catch (Exception e) {
-						System.out.println("发送GET请求出现异常！" + e);
-						e.printStackTrace();
+						logger.info("发送GET请求出现异常！" + e);
+						logger.error("异常", e);
 						hasError = true;
 						return;
 					}
@@ -148,7 +152,7 @@ public class HttpRequestUtilEx extends HttpRequestUtil {
 							if (count.decrementAndGet() == 0)
 								lock.notifyAll();
 						}
-						System.out.println("下载完毕... Thread-" + index);
+						logger.info("下载完毕... Thread-" + index);
 					}
 				}
 			});
@@ -161,7 +165,7 @@ public class HttpRequestUtilEx extends HttpRequestUtil {
 				lock.wait();
 			}
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 		if(hasError) {
 			status = StatusEnum.FAIL;
@@ -175,7 +179,7 @@ public class HttpRequestUtilEx extends HttpRequestUtil {
 			status = StatusEnum.SUCCESS;
 			return true;
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 			status = StatusEnum.FAIL;
 			return false;
 		}

@@ -9,7 +9,12 @@ import java.net.SocketTimeoutException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class SocketServer {
+
+	private static final Logger logger = LoggerFactory.getLogger(SocketServer.class);
 
 	public static void main(String[] args) {
 		SocketServer ss = new SocketServer(8081);
@@ -42,7 +47,7 @@ public class SocketServer {
 		} catch (IOException e) {
 			//e.printStackTrace();
 		}
-		System.out.println("正在关闭 SocketServer: 服务器... ");
+		logger.info("正在关闭 SocketServer: 服务器... ");
 	}
 
 	/**
@@ -50,7 +55,7 @@ public class SocketServer {
 	 */
 	public void startServer() {
 		Socket socket = null;
-		System.out.println("SocketServer: 服务器监听开始... ");
+		logger.info("SocketServer: 服务器监听开始... ");
 		try {
 			serverSocket = new ServerSocket(portServerListening, 30, Inet4Address.getLoopbackAddress());
 			// serverSocket.setSoTimeout(300000);
@@ -76,7 +81,7 @@ public class SocketServer {
 			}
 			httpThreadPool.shutdownNow();
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		} finally {
 			if (socket != null) {
 				try {
@@ -91,6 +96,6 @@ public class SocketServer {
 				}
 			}
 		}
-		System.out.println("SocketServer: 服务器已经关闭... ");
+		logger.info("SocketServer: 服务器已经关闭... ");
 	}
 }

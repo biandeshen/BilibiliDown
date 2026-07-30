@@ -32,7 +32,11 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.slf4j.LoggerFactory;
+
 public class RealTimeDownloadThread extends Thread {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(RealTimeDownloadThread.class);
 
 	List<String> configFilePaths;
 	private volatile boolean paused = false;
@@ -90,8 +94,8 @@ for (String configFilePath : configFilePaths) {
 				Thread.currentThread().interrupt();
 				break;
 			} catch (Exception e) {
-				e.printStackTrace();
-				// 出错后也等待一段时间再继续
+			logger.error("异常", e);
+			// 出错后也等待一段时间再继续
 				try {
 					Thread.sleep(Global.sleepBetweenCycles);
 				} catch (InterruptedException ie) {

@@ -34,7 +34,11 @@ import nicelee.bilibili.util.Logger;
 import nicelee.server.core.SocketServer;
 import nicelee.ui.Global;
 
+import org.slf4j.LoggerFactory;
+
 public class CookieRefreshThread extends Thread {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(CookieRefreshThread.class);
 
 	public static boolean showTips = true;
 	static CookieRefreshThread instance;
@@ -82,7 +86,7 @@ public class CookieRefreshThread extends Thread {
 			String outStr = new String(resultChars);
 			return outStr;
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 			return null;
 		}
 	}
@@ -157,11 +161,11 @@ public class CookieRefreshThread extends Thread {
 				refreshCsrf = m.group(1).trim();
 				Logger.println(refreshCsrf);
 			} catch (Exception e) {
-				e.printStackTrace();
-				if(showTips)
-					JOptionPaneManager.showMsgWithNewThread("消息", "刷新cookie出现错误");
-				return;
-			}
+			logger.error("异常", e);
+			if(showTips)
+				JOptionPaneManager.showMsgWithNewThread("消息", "刷新cookie出现错误");
+			return;
+		}
 		}
 		// 调用刷新Cookie的API
 		INeedLogin inl = new INeedLogin();
@@ -197,8 +201,8 @@ public class CookieRefreshThread extends Thread {
 			try {
 				Desktop.getDesktop().browse(new URI(browseUrl));
 			} catch (IOException | URISyntaxException e1) {
-				e1.printStackTrace();
-			}
+			logger.error("异常", e1);
+		}
 		else {
 			Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
 			Transferable trans = new StringSelection(browseUrl);

@@ -26,7 +26,12 @@ import nicelee.bilibili.model.VideoInfo;
 import nicelee.ui.item.MJButton;
 import nicelee.ui.thread.DownloadRunnable;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class TabVideo extends JPanel implements ActionListener, MouseListener {
+
+	private static final Logger logger = LoggerFactory.getLogger(TabVideo.class);
 
 	private static final long serialVersionUID = -5829023045158490350L;
 	// ImageIcon backgroundIcon = new
@@ -234,7 +239,7 @@ public class TabVideo extends JPanel implements ActionListener, MouseListener {
 			// new Thread(downThread).start();
 			Global.queryThreadPool.execute(downThread);
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 

@@ -28,7 +28,11 @@ import nicelee.bilibili.util.Logger;
 import nicelee.bilibili.util.ResourcesUtil;
 import nicelee.bilibili.util.custom.System;
 
+import org.slf4j.LoggerFactory;
+
 public class INeedLogin {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(INeedLogin.class);
 
 	HttpRequestUtil util = new HttpRequestUtil();
 	public List<HttpCookie> iCookies;
@@ -68,7 +72,7 @@ public class INeedLogin {
 				// System.out.println(user.getPoster());
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 			isLogin = false;
 		}
 		return isLogin;
@@ -101,7 +105,7 @@ public class INeedLogin {
 		try {
 			String json = util.getContent(url, genLoginHeader());
 
-			System.out.println(json);
+			logger.info("{}", json);
 			JSONObject jObj = new JSONObject(json).getJSONObject("data");
 
 			boolean succ = jObj.getInt("code") == 0;
@@ -111,8 +115,8 @@ public class INeedLogin {
 			}
 			return succ;
 		} catch (Exception e) {
-			e.printStackTrace();
-			System.out.println("验证Auth返回超时, 或json解析错误");
+			logger.error("异常", e);
+			logger.info("验证Auth返回超时, 或json解析错误");
 			return false;
 		}
 
@@ -135,9 +139,9 @@ public class INeedLogin {
 			}
 			oos.close();
 		} catch (FileNotFoundException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 
@@ -222,7 +226,7 @@ public class INeedLogin {
 			}
 
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 			return "未知错误，可能由网络引起";
 		}
 	}
@@ -238,7 +242,7 @@ public class INeedLogin {
 			Logger.println(result);
 			return new JSONObject(result);
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 			return null;
 		}
 	}
@@ -265,7 +269,7 @@ public class INeedLogin {
 				return response.optString("message", "未知错误，返回信息中没有错误描述");
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 			return "未知错误，可能由网络引起";
 		}
 	}
@@ -316,7 +320,7 @@ public class INeedLogin {
 			String outStr = Base64.getEncoder().encodeToString(cipher.doFinal(origin.getBytes("UTF-8")));
 			return outStr;
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 			return null;
 		}
 	}

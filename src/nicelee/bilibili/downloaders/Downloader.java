@@ -9,7 +9,11 @@ import nicelee.bilibili.enums.StatusEnum;
 import nicelee.bilibili.util.HttpRequestUtil;
 import nicelee.bilibili.util.Logger;
 
+import org.slf4j.LoggerFactory;
+
 public class Downloader implements IDownloader {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(Downloader.class);
 
 	private static List<IDownloader> downloaders = null;
 	private IDownloader downloader = null;
@@ -36,7 +40,7 @@ public class Downloader implements IDownloader {
 							downloaders.add(downloader);
 						}
 					} catch (Exception e) {
-						e.printStackTrace();
+						logger.error("异常", e);
 					}
 				}
 			}
@@ -62,8 +66,8 @@ public class Downloader implements IDownloader {
 			downloader.init(util);
 			return downloader.download(url, avId, qn, page);
 		} else {
-			System.out.print("未找到匹配当前url的下载器:");
-			System.out.println(url);
+			logger.info("未找到匹配当前url的下载器:");
+			logger.info("{}", url);
 			status = StatusEnum.FAIL;
 			return false;
 		}

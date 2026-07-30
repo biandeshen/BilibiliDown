@@ -35,7 +35,11 @@ import nicelee.ui.item.MJTextField;
 import nicelee.ui.thread.GetVideoDetailThread;
 import nicelee.ui.thread.LoginThread;
 
+import org.slf4j.LoggerFactory;
+
 public class TabIndex extends JPanel implements ActionListener, MouseListener, ItemListener {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TabIndex.class);
 
 	/**
 	 * 
@@ -118,12 +122,12 @@ public class TabIndex extends JPanel implements ActionListener, MouseListener, I
 	 * 关闭所有视频Tab
 	 */
 	public void closeAllVideoTabs() {
-		System.out.println("当前Tab数量： " + (jTabbedpane.getTabCount() - 2));
-		System.out.println("正在关闭Tab标签页");
+		logger.info("当前Tab数量： " + (jTabbedpane.getTabCount() - 2));
+		logger.info("正在关闭Tab标签页");
 		for(int i = jTabbedpane.getTabCount() - 1; i >= 2 ; i--) {
 			jTabbedpane.removeTabAt(i);
 		}
-		System.out.println("当前Tab数量： " + (jTabbedpane.getTabCount() - 2));
+		logger.info("当前Tab数量： " + (jTabbedpane.getTabCount() - 2));
 	}
 	
 	/**

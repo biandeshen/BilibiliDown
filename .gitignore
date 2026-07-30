@@ -15,7 +15,7 @@
 *.txt
 *download
 *.config
-simplelogger.properties
+/logs
 /bin
 /target
 /config

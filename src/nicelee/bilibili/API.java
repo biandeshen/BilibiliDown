@@ -29,7 +29,11 @@ import nicelee.bilibili.util.convert.ConvertUtil;
 import nicelee.bilibili.util.custom.System;
 import nicelee.ui.Global;
 
+import org.slf4j.LoggerFactory;
+
 public class API {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(API.class);
 
 	public static void main(String[] args) {
 //		List<HttpCookie> cookies = HttpCookies
@@ -310,7 +314,7 @@ public class API {
 			kvMap.put("browser_resolution", resolution);
 			return HttpCookies.map2CookieStr(kvMap);
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 		return "";
 	}

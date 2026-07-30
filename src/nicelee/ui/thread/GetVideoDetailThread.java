@@ -20,8 +20,12 @@ import nicelee.ui.TabVideo;
 import nicelee.ui.item.ClipInfoPanel;
 import nicelee.ui.item.JOptionPaneManager;
 
+import org.slf4j.LoggerFactory;
+
 public class GetVideoDetailThread extends Thread{
-	
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GetVideoDetailThread.class);
+
 	TabVideo video;
 	String avId;
 	public GetVideoDetailThread(TabVideo video, String avId) {
@@ -79,10 +83,10 @@ public class GetVideoDetailThread extends Thread{
 			jpContent.updateUI();
 			jpContent.repaint();
 		} catch (BilibiliError e) {
-			e.printStackTrace();
-			JOptionPaneManager.alertErrMsgWithNewThread("发生了预料之外的错误", ResourcesUtil.detailsOfException(e));
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		logger.error("异常", e);
+		JOptionPaneManager.alertErrMsgWithNewThread("发生了预料之外的错误", ResourcesUtil.detailsOfException(e));
+	} catch (Exception e) {
+		logger.error("异常", e);
+	}
 	}
 }

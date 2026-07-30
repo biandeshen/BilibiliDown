@@ -15,7 +15,12 @@ import nicelee.bilibili.annotations.Controller;
 import nicelee.bilibili.annotations.Value;
 import nicelee.server.util.ResponseUtil;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PathDealer {
+
+	private static final Logger logger = LoggerFactory.getLogger(PathDealer.class);
 
 	protected Socket socketClient;
 
@@ -142,11 +147,11 @@ public class PathDealer {
 				out.write(result);
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
-			System.out.println(klass.getName());
-			System.out.println(currentMethod.getName());
+			logger.error("异常", e);
+			logger.info(klass.getName());
+			logger.info(currentMethod.getName());
 			for (Object obj : values) {
-				System.out.println(obj);
+				logger.info("{}", obj);
 			}
 		}
 	}

@@ -23,8 +23,12 @@ import nicelee.ui.item.JOptionPane;
 import nicelee.ui.item.JOptionPane;
 import nicelee.ui.item.JOptionPaneManager;
 
+import org.slf4j.LoggerFactory;
+
 public class DownloadRunnable implements Runnable {
-	
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(DownloadRunnable.class);
+
 	VideoInfo avInfo;
 	ClipInfo clip;
 	String displayName;
@@ -68,23 +72,23 @@ public class DownloadRunnable implements Runnable {
 			JOptionPaneManager.alertErrMsgWithNewThread("发生了预料之外的错误", ResourcesUtil.detailsOfException(e));
 			BatchDownloadRbyRThread.taskFail(clip, ResourcesUtil.detailsOfException(e));
 		} catch (Exception e) {
-			e.printStackTrace();
-			BatchDownloadRbyRThread.taskFail(clip, ResourcesUtil.detailsOfException(e));
-		}
+		logger.error("异常", e);
+		BatchDownloadRbyRThread.taskFail(clip, ResourcesUtil.detailsOfException(e));
+	}
 	}
 
 	public void download() {
-		System.out.println("你点击了一次下载按钮...");
+		logger.info("你点击了一次下载按钮...");
 		// 如果点击了全部暂停按钮，而此时在队列中
 		if(TabDownload.isStopAll()) {
-			System.out.println("你点击了一次暂停按钮...");
+			logger.info("你点击了一次暂停按钮...");
 			BatchDownloadRbyRThread.taskFail(clip, "stop manualy");
 			return;
 		}
 		//判断是否已经下载过
 		if(Global.useRepo && RepoUtil.isInRepo(record)) {
 			JOptionPaneManager.showMsgWithNewThread("提示", String.format(MSG_VIDEO_DOWNLOADED, record));
-			System.out.println("已经下载过 " + record);
+			logger.info("已经下载过 " + record);
 			BatchDownloadRbyRThread.taskFail(clip, "already downloaded");
 			return;
 		}
@@ -92,7 +96,7 @@ public class DownloadRunnable implements Runnable {
 		DownloadInfoPanel downPanel = new DownloadInfoPanel(clip, qn);
 		// 判断是否在下载任务中
 		if (Global.downloadTaskList.get(downPanel) != null) {
-			System.out.println("已经存在相关下载");
+			logger.info("已经存在相关下载");
 			BatchDownloadRbyRThread.taskFail(clip, "already in download panel");
 			return;
 		}
@@ -134,7 +138,7 @@ public class DownloadRunnable implements Runnable {
 		//判断是否已经下载过
 		if (qn != realQN && Global.useRepo && RepoUtil.isInRepo(record)) {
 			JOptionPaneManager.showMsgWithNewThread("提示", String.format(MSG_VIDEO_DOWNLOADED, record));
-			System.out.println("已经下载过 " + record);
+			logger.info("已经下载过 " + record);
 			BatchDownloadRbyRThread.taskFail(clip, "already downloaded2");
 			return;
 		}
@@ -142,7 +146,7 @@ public class DownloadRunnable implements Runnable {
 		downPanel.initDownloadParams(iNeedAV, urlQuery, avid_qn, formattedTitle, realQN);
 		// 再进行一次判断，看下载列表是否已经存在相应任务(防止并发误判)
 		if (Global.downloadTaskList.get(downPanel) != null) {
-			System.out.println("已经存在相关下载");
+			logger.info("已经存在相关下载");
 			BatchDownloadRbyRThread.taskFail(clip, "already in download panel2");
 			return;
 		}
@@ -160,7 +164,7 @@ public class DownloadRunnable implements Runnable {
 			try {
 				Thread.sleep(Global.sleepAfterDownloadQuery);
 			} catch (InterruptedException e) {
-				e.printStackTrace();
+				logger.error("异常", e);
 			}
 		}
 	}

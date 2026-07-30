@@ -12,7 +12,12 @@ import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class SocketDealer extends PathDealer implements Runnable {
+
+	private static final Logger logger = LoggerFactory.getLogger(SocketDealer.class);
 
 	// 与客户端之间的联系
 	BufferedReader in;

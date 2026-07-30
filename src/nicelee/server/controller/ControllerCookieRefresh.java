@@ -13,13 +13,17 @@ import nicelee.bilibili.annotations.Value;
 import nicelee.bilibili.util.HttpCookies;
 import nicelee.bilibili.util.HttpHeaders;
 import nicelee.bilibili.util.HttpRequestUtil;
-import nicelee.bilibili.util.Logger;
 import nicelee.server.core.PathDealer;
 import nicelee.server.util.ResponseUtil;
 import nicelee.ui.thread.CookieRefreshThread;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Controller(path = "/cookieRefresh", note = "刷新Cookie")
 public class ControllerCookieRefresh {
+
+	private static final Logger logger = LoggerFactory.getLogger(ControllerCookieRefresh.class);
 
 	@Controller(path = "/index.html", matchAll = true, note = "html主页")
 	public String index(BufferedWriter out, OutputStream outRaw, @Value(key = "pathData") String path) {
@@ -42,7 +46,7 @@ public class ControllerCookieRefresh {
 			Matcher m = p.matcher(html);
 			m.find();
 			String refreshCsrf = m.group(1).trim();
-			Logger.println(refreshCsrf);
+			nicelee.bilibili.util.Logger.println(refreshCsrf);
 			CookieRefreshThread thread = CookieRefreshThread.currentInstance();
 			thread.setRefreshCsrf(refreshCsrf);
 			thread.interrupt();
@@ -84,7 +88,7 @@ public class ControllerCookieRefresh {
 				ResponseUtil.endResponseHeader(out);
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 }

@@ -7,7 +7,12 @@ import java.io.InputStreamReader;
 
 import nicelee.ui.Global;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class StreamManager extends Thread{
+
+	private static final Logger logger = LoggerFactory.getLogger(StreamManager.class);
 	Process process;
     InputStream inputStream;
     public StreamManager(Process process, InputStream inputStream) {
@@ -24,10 +29,10 @@ public class StreamManager extends Thread{
         	String line = null;
             while((line = bufferedReader.readLine()) !=null ) {
             	if(Global.debugCmd)
-            		System.out.println(line);
+            		logger.info("{}", line);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("异常", e);
         } finally {
         	try { if (bufferedReader != null) bufferedReader.close(); } catch (Exception ignored) {}
         	try { if (inputStreamReader != null) inputStreamReader.close(); } catch (Exception ignored) {}

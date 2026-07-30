@@ -18,7 +18,10 @@ import nicelee.ui.item.JOptionPane;
 
 import nicelee.bilibili.util.Logger;
 
+import org.slf4j.LoggerFactory;
+
 public class SysTray {
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(SysTray.class);
 	private Image systemTrayImg;
 	final private JFrame frame;
 
@@ -84,7 +87,7 @@ public class SysTray {
 			frame.setExtendedState(JFrame.ICONIFIED);
 			return this;
 		} catch (AWTException e1) {
-			e1.printStackTrace();
+			logger.error("异常", e1);
 			return null;
 		}
 	}

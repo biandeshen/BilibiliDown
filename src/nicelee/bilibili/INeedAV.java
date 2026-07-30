@@ -14,7 +14,11 @@ import nicelee.bilibili.util.HttpRequestUtilEx;
 import nicelee.bilibili.util.Logger;
 import nicelee.ui.Global;
 
+import org.slf4j.LoggerFactory;
+
 public class INeedAV {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(INeedAV.class);
 
 	private HttpRequestUtil util;
 	private InputParser inputParser = null;
@@ -30,9 +34,9 @@ public class INeedAV {
 
 	public static void main(String[] args) {
 //		args = new String[]{"https://space.bilibili.com/8741628/favlist?fid=70263328"};
-		System.out.println("-------------------------------");
-		System.out.println("输入av号, 下载当前cookie所能下载的最清晰链接");
-		System.out.println("-------------------------------");
+		logger.info("-------------------------------");
+		logger.info("输入av号, 下载当前cookie所能下载的最清晰链接");
+		logger.info("-------------------------------");
 		// 初始化配置
 		ConfigUtil.initConfigs();
 		
@@ -57,7 +61,7 @@ public class INeedAV {
 				ina.downloadClip(clip);
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 

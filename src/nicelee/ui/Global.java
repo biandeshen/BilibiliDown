@@ -24,7 +24,12 @@ import nicelee.bilibili.util.net.TrustAllCertSSLUtil;
 import nicelee.ui.item.DownloadInfoPanel;
 import nicelee.ui.thread.DownloadExecutors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class Global {
+
+	private static final Logger logger = LoggerFactory.getLogger(Global.class);
 	// 界面显示相关
 	@Config(key = "bilibili.version", defaultValue = "v6.41", warning = false)
 	public static String version; // 一般情况下，我们不会设置这个标签，这个用于测试
@@ -282,7 +287,7 @@ public class Global {
 		} else if (!savePath.endsWith("/")) {
 			savePath += "/";
 		}
-		System.out.println("savePath: " + savePath);
+		logger.info("savePath: " + savePath);
 		Global.savePath = savePath;
 		Global.saveToRepo = Global.useRepo || Global.saveToRepo;
 		if (Global.deleteUserFile) {
@@ -310,11 +315,11 @@ public class Global {
 		}
 		// 跳过HTTPS证书验证
 		try {
-			System.out.println("allowInsecure:" + allowInsecure);
+			logger.info("allowInsecure:" + allowInsecure);
 			if (allowInsecure)
 				HttpsURLConnection.setDefaultSSLSocketFactory(TrustAllCertSSLUtil.getFactory());
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 		//  设置System Property
 		String sysPropJreTag = "bilibili.system.properties.jre" + System.getProperty("java.specification.version");
@@ -401,10 +406,10 @@ public class Global {
 				int mode = Integer.parseInt(value);
 				field.set(null, DownloadModeEnum.getModeEnum(mode));
 			} else {
-				System.err.println(config.key() + " 配置未能生效!!");
+				logger.error(config.key() + " 配置未能生效!!");
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 

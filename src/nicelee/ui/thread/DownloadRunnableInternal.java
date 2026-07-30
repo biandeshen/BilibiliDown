@@ -16,7 +16,11 @@ import nicelee.ui.Global;
 import nicelee.ui.item.DownloadInfoPanel;
 import nicelee.ui.item.JOptionPaneManager;
 
+import org.slf4j.LoggerFactory;
+
 public class DownloadRunnableInternal implements Runnable {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(DownloadRunnableInternal.class);
 
 	final DownloadInfoPanel downPanel;
 	final long urlTimestamp;
@@ -110,15 +114,15 @@ public class DownloadRunnableInternal implements Runnable {
 		} catch (BilibiliError e) {
 			JOptionPaneManager.alertErrMsgWithNewThread("发生了预料之外的错误", ResourcesUtil.detailsOfException(e));
 		} catch (Exception e) {
-			e.printStackTrace();
+		logger.error("异常", e);
+	}
+	if (Global.sleepAfterDownloadComplete > 0) {
+		try {
+			Thread.sleep(Global.sleepAfterDownloadComplete);
+		} catch (InterruptedException e) {
+			logger.error("异常", e);
 		}
-		if (Global.sleepAfterDownloadComplete > 0) {
-			try {
-				Thread.sleep(Global.sleepAfterDownloadComplete);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
+	}
 
 	}
 

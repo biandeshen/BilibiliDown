@@ -23,14 +23,18 @@ import nicelee.ui.DialogSMSLogin;
 import nicelee.ui.FrameQRCode;
 import nicelee.ui.Global;
 
+import org.slf4j.LoggerFactory;
+
 public class LoginThread extends Thread {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(LoginThread.class);
 
 	@Override
 	public void run() {
 		try {
 			login();
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 			stopFrameWaiting();
 		}
 	}
@@ -41,7 +45,7 @@ public class LoginThread extends Thread {
 	}
 	
 	public void login() {
-		System.out.println("登录线程被调用...");
+		logger.info("登录线程被调用...");
 //		System.out.println(Global.index.getParent().getParent().getParent().getParent().getParent().isVisible());
 //		System.exit(1);
 		// Global.index.jlHeader.removeMouseListener(Global.index);
@@ -51,33 +55,33 @@ public class LoginThread extends Thread {
 		 */
 		if (Global.isLogin || !Global.needToLogin) {
 			// Global.index.jlHeader.addMouseListener(Global.index);
-			System.out.println("已经登录,或没有发起登录请求");
+			logger.info("已经登录,或没有发起登录请求");
 			stopFrameWaiting();
 			return;
 		}
 		String cookiesStr = inl.readCookies();
 		// 检查有没有本地cookie配置
 		if (cookiesStr != null) {
-			System.out.println("检查到存在本地Cookies...");
+			logger.info("检查到存在本地Cookies...");
 			List<HttpCookie> cookies = HttpCookies.convertCookies(cookiesStr);
 			// 成功登录后即返回,不再进行二维码扫码工作
 			if (inl.getLoginStatus(cookies)) {
-				System.out.println("本地Cookies验证有效...");
+				logger.info("本地Cookies验证有效...");
 				// 设置全局Cookie
 				HttpCookies.setGlobalCookies(cookies);
 				// 初始化用户数据显示
 				initUserInfo(inl);
-				System.out.println("成功登录...");
+				logger.info("成功登录...");
 				Global.isLogin = true;
 				stopFrameWaiting();
 				return;
 			} else {
-				System.out.println("本地Cookies验证无效...");
+				logger.info("本地Cookies验证无效...");
 				// 置空全局Cookie
 				HttpCookies.setGlobalCookies(null);
 			}
 		}
-		System.out.println("没有检查到本地Cookies...");
+		logger.info("没有检查到本地Cookies...");
 		stopFrameWaiting();
 		//QRLogin(inl);
 		switch (Global.loginType) {
@@ -106,7 +110,7 @@ public class LoginThread extends Thread {
 			inl.getLoginStatus(inl.iCookies);
 			// 初始化用户数据显示
 			initUserInfo(inl);
-			System.out.println("成功登录...");
+			logger.info("成功登录...");
 		} else {
 			// Global.index.jlHeader.addMouseListener(Global.index);
 			Global.needToLogin = true;
@@ -133,9 +137,9 @@ public class LoginThread extends Thread {
 		 * 1. 访问 Get 访问 https://passport.bilibili.com/qrcode/getLoginUrl 获取 oauthKey ==>
 		 * 链接 ==> 二维码
 		 */
-		System.out.println("正在获取验证AuthKey以生成二维码...");
+		logger.info("正在获取验证AuthKey以生成二维码...");
 		String authKey = inl.getAuthKey();
-		System.out.println("authKey: " + authKey);
+		logger.info("authKey: " + authKey);
 		// 显示二维码图片
 		FrameQRCode qr = new FrameQRCode(inl.qrCodeStr);
 		qr.initUI();
@@ -148,16 +152,16 @@ public class LoginThread extends Thread {
 		while (!Global.isLogin && Global.needToLogin && System.currentTimeMillis() - start < 60 * 1000) {
 			try {
 				Global.isLogin = inl.getAuthStatus(authKey);
-				System.out.println("------------");
+				logger.info("------------");
 				Thread.sleep(1000);
 			} catch (InterruptedException e) {
-				e.printStackTrace();
+				logger.error("异常", e);
 			} catch (UnsupportedEncodingException e) {
-				e.printStackTrace();
+				logger.error("异常", e);
 			}
 		}
 		// 销毁图片
-		System.out.println("登录线程结束...");
+		logger.info("登录线程结束...");
 		qr.dispose();
 	}
 
@@ -177,7 +181,7 @@ public class LoginThread extends Thread {
 			Global.index.jlHeader.setIcon(imag1);
 			// Global.index.jlHeader.removeMouseListener(Global.index);
 		} catch (MalformedURLException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 		// 设置收藏夹
 		try {
@@ -199,7 +203,7 @@ public class LoginThread extends Thread {
 				}
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 }

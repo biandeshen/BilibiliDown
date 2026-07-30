@@ -23,7 +23,11 @@ import nicelee.bilibili.util.check.FlvMerger;
 import nicelee.bilibili.util.convert.ConvertUtil;
 import nicelee.ui.Global;
 
+import org.slf4j.LoggerFactory;
+
 public class CmdUtil {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(CmdUtil.class);
 
 	public static String FFMPEG_PATH = "ffmpeg";
 	public static File DEFAULT_WORKING_DIR = null;
@@ -49,7 +53,7 @@ public class CmdUtil {
             }
 			process = pb.start();
 			process.waitFor();
-			System.out.println("process 执行完毕");
+			logger.info("process 执行完毕");
 			return true;
 		} catch (Exception e) {
 			// e.printStackTrace();
@@ -113,7 +117,7 @@ public class CmdUtil {
 				try {
 					new FlvMerger().merge(flist, videoFile);
 				} catch (IOException e) {
-					e.printStackTrace();
+					logger.error("异常", e);
 					return false;
 				}
 			}
@@ -181,7 +185,7 @@ public class CmdUtil {
 			}
 			bw.close();
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 		String cmd[] = { FFMPEG_PATH, "-f", "concat", "-safe", "0", "-i", Global.savePath + dstName + ".txt", "-c",
 				"copy", Global.savePath + dstName };
@@ -250,7 +254,7 @@ public class CmdUtil {
 		if (folderDown.exists()) {
 			// 删除下载文件
 			for (File file : folderDown.listFiles(filter)) {
-				System.out.println("尝试删除" + file.getName());
+				logger.info("尝试删除" + file.getName());
 				file.delete();
 			}
 		}
@@ -334,7 +338,7 @@ public class CmdUtil {
 			} else {
 				File f = new File(Global.savePath, "rename.bat");
 				boolean isExist = f.exists();
-				System.out.println(f.getAbsolutePath() + "是否存在? " + f.exists());
+				logger.info(f.getAbsolutePath() + "是否存在? " + f.exists());
 				FileWriter fw;
 				fw = new FileWriter(f, true);
 				if (!isExist) {
@@ -346,7 +350,7 @@ public class CmdUtil {
 				fw.close();
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 

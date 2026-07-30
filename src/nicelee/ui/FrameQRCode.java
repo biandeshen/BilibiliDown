@@ -12,7 +12,12 @@ import javax.swing.JLabel;
 import nicelee.bilibili.util.QrCodeUtil;
 import nicelee.ui.item.MJTitleBar;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class FrameQRCode extends JFrame{
+
+	private static final Logger logger = LoggerFactory.getLogger(FrameQRCode.class);
 	
 	/**
 	 * 
@@ -24,7 +29,7 @@ public class FrameQRCode extends JFrame{
 	}
 	
 	public void initUI() {
-		System.out.println("正在生成二维码图片Frame");
+		logger.info("正在生成二维码图片Frame");
 		this.setTitle("请扫描二维码...");
 		this.setSize(450, 500);
 		//this.getRootPane().setWindowDecorationStyle(JRootPane.PLAIN_DIALOG);
@@ -43,9 +48,9 @@ public class FrameQRCode extends JFrame{
 			JLabel jLabel = new JLabel(imgIcon);
 			this.add(jLabel);
 			this.setVisible(true);
-			System.out.println("二维码图片已生成");
+			logger.info("二维码图片已生成");
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 			this.dispose();
 		}
 		

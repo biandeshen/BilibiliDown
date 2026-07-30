@@ -23,7 +23,12 @@ import nicelee.bilibili.plugin.CustomClassLoader;
 import nicelee.bilibili.plugin.Plugin;
 import nicelee.bilibili.util.ResourcesUtil;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public abstract class PackageScanLoader {
+
+	private static final Logger logger = LoggerFactory.getLogger(PackageScanLoader.class);
 
 	private ClassLoader classLoader;
 	private List<Class<?>> validClazzList;
@@ -110,7 +115,7 @@ public abstract class PackageScanLoader {
 				}
 				reader.close();
 			} catch (IOException e) {
-				e.printStackTrace();
+				logger.error("异常", e);
 			}
 		} else if(jFileFolder.exists()){
 			// 遍历文件进行扫描
@@ -137,7 +142,7 @@ public abstract class PackageScanLoader {
 		}
 		try {
 			// 加载类
-			System.out.printf("尝试加载自定义类: %s\r\n", clazzName);
+			logger.info(String.format("尝试加载自定义类: %s\r\n", clazzName));
 			Class<?> klass = parserPlg.loadClass(ccloader, clazzName);
 			Bilibili bili = klass.getAnnotation(Bilibili.class);
 			if (null != bili) {
@@ -148,7 +153,7 @@ public abstract class PackageScanLoader {
 				}
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 
@@ -185,9 +190,9 @@ public abstract class PackageScanLoader {
 				}
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		} catch (URISyntaxException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 		return validClazzList;
 	}
@@ -229,7 +234,7 @@ public abstract class PackageScanLoader {
 				validClazzList.add(klass);
 			}
 		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 
@@ -257,9 +262,9 @@ public abstract class PackageScanLoader {
 			}
 
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 
 	}
@@ -286,9 +291,9 @@ public abstract class PackageScanLoader {
 			}
 			jin.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 		
 	}

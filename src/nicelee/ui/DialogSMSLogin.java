@@ -40,7 +40,11 @@ import nicelee.bilibili.INeedLogin;
 import nicelee.bilibili.util.Logger;
 import nicelee.server.core.SocketServer;
 
+import org.slf4j.LoggerFactory;
+
 public class DialogSMSLogin extends JDialog implements FocusListener, MouseListener, MouseMotionListener {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(DialogSMSLogin.class);
 
 	public static DialogSMSLogin Instance;
 	/**
@@ -57,7 +61,7 @@ public class DialogSMSLogin extends JDialog implements FocusListener, MouseListe
 			dialog.init();
 			Logger.println("-----------------");
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 
@@ -241,7 +245,7 @@ public class DialogSMSLogin extends JDialog implements FocusListener, MouseListe
 				}
 				lbTips.setText("极验验证码验证中...");
 			} catch (Exception e) {
-				e.printStackTrace();
+				logger.error("异常", e);
 			}
 		}
 		isRefreshingCaptcha = false;

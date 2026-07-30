@@ -43,7 +43,11 @@ import nicelee.bilibili.INeedLogin;
 import nicelee.bilibili.util.Logger;
 import nicelee.server.core.SocketServer;
 
+import org.slf4j.LoggerFactory;
+
 public class DialogLogin extends JDialog implements FocusListener, MouseListener, MouseMotionListener {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(DialogLogin.class);
 
 	public static DialogLogin Instance;
 	/**
@@ -60,7 +64,7 @@ public class DialogLogin extends JDialog implements FocusListener, MouseListener
 			dialog.init();
 			Logger.println("-----------------");
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 
@@ -242,7 +246,7 @@ public class DialogLogin extends JDialog implements FocusListener, MouseListener
 					JOptionPane.showMessageDialog(this, "请通过浏览器访问以下网址(已复制到剪贴板):\n" + url, "请注意", JOptionPane.WARNING_MESSAGE);
 				}
 			} catch (Exception e) {
-				e.printStackTrace();
+				logger.error("异常", e);
 			}
 		}
 		isRefreshingCaptcha = false;

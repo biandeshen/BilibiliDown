@@ -5,7 +5,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.util.HashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class CustomClassLoader extends ClassLoader {
+
+	private static final Logger logger = LoggerFactory.getLogger(CustomClassLoader.class);
 
 	private HashMap<String, Class<?>> classList = new HashMap<>();
 
@@ -29,7 +34,7 @@ public class CustomClassLoader extends ClassLoader {
 			classList.put(className, clazz);
 			return clazz;
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 			return null;
 		}
 	}

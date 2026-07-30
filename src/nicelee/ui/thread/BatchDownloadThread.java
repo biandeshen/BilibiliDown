@@ -31,7 +31,11 @@ import nicelee.bilibili.util.batchdownload.BatchDownload.BatchDownloadsBuilder;
 import nicelee.ui.Global;
 import nicelee.ui.item.JOptionPaneManager;
 
+import org.slf4j.LoggerFactory;
+
 public class BatchDownloadThread extends Thread {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(BatchDownloadThread.class);
 
 	String configFileName;
 	String configFilePath;
@@ -67,7 +71,7 @@ public class BatchDownloadThread extends Thread {
 		} catch (BilibiliError e) {
 			JOptionPaneManager.alertErrMsgWithNewThread("发生了预料之外的错误", ResourcesUtil.detailsOfException(e));
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 
 		Logger.println("一键下载运行完毕");

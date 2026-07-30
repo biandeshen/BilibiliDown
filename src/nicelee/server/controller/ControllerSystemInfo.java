@@ -7,10 +7,15 @@ import java.io.IOException;
 import nicelee.bilibili.annotations.Controller;
 import nicelee.server.util.ResponseUtil;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 @Controller(path = "/info", note = "相关信息")
 public class ControllerSystemInfo {
-	
+
+	private static final Logger logger = LoggerFactory.getLogger(ControllerSystemInfo.class);
+
 	@Controller(path = "/space/root", note = "获取根目录可用空间信息")
 	public String rootSpaceInfo(BufferedWriter out) {
 		try {
@@ -26,7 +31,7 @@ public class ControllerSystemInfo {
 			
 			ResponseUtil.htmlResponseEnd(out);
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 		return null;
 	}

@@ -26,7 +26,12 @@ import nicelee.ui.thread.CookieRefreshThread;
 import nicelee.ui.thread.LoginThread;
 import nicelee.ui.thread.MonitoringThread;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class FrameMain_v3_4 extends JFrame {
+
+	private static final Logger logger = LoggerFactory.getLogger(FrameMain_v3_4.class);
 
 	/**
 	 * 
@@ -35,16 +40,16 @@ public class FrameMain_v3_4 extends JFrame {
 	JTabbedPane jTabbedpane;// 存放选项卡的组件
 
 	public static void main(String[] args) {
-		System.out.println();
+		logger.info("");
 		// System.getProperties().setProperty("file.encoding", "utf-8");
 		boolean isFFmpegSupported = SysUtil.surportFFmpegOfficially();
-		System.out.println("Java version:" + System.getProperty("java.specification.version"));
-		System.out.println(ResourcesUtil.baseDirectory());
+		logger.info("Java version:" + System.getProperty("java.specification.version"));
+		logger.info("{}", ResourcesUtil.baseDirectory());
 		// 读取配置文件
 		ConfigUtil.initConfigs();
 		// -v 打印版本，然后退出
 		if(args.length == 1 && "-v".equalsIgnoreCase(args[0])) {
-			System.out.println(Global.version);
+			logger.info("{}", Global.version);
 			System.exit(0);
 		}
 		// 初始化 - 检查对数据文件夹是否有“写”的权限
@@ -119,7 +124,7 @@ public class FrameMain_v3_4 extends JFrame {
 				}
 			}).start();
 		}
-		System.out.println("如果过度界面显示时间过长，可双击跳过");
+		logger.info("如果过度界面显示时间过长，可双击跳过");
 		try {
 			while (Global.frWaiting.isVisible()) {
 				Thread.sleep(1000);
@@ -151,7 +156,7 @@ public class FrameMain_v3_4 extends JFrame {
 				}
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 

@@ -18,7 +18,12 @@ import java.util.regex.Pattern;
 
 import nicelee.ui.Global;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ConfigUtil {
+
+	private static final Logger logger = LoggerFactory.getLogger(ConfigUtil.class);
 	final static Pattern patternConfig = Pattern.compile("^[ ]*([0-9|a-z|A-Z|.|_]+)[ ]*=[ ]*([^ ]+.*$)");
 
 	/**
@@ -29,9 +34,9 @@ public class ConfigUtil {
 	public static boolean isRunning() {
 		File lockFile = new File(ResourcesUtil.baseDirectory(), "config/.lock");
 		try {
-			System.out.println(lockFile.getCanonicalPath());
+			logger.info("{}", lockFile.getCanonicalPath());
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 		return lockFile.isFile();
 	}
@@ -44,7 +49,7 @@ public class ConfigUtil {
 		try {
 			lockFile.createNewFile();
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 
@@ -66,13 +71,13 @@ public class ConfigUtil {
 				config = buReader.readLine();
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 		// 从配置文件读取写入Global.settings 
-		System.out.println("----Config init begin...----");
+		logger.info("----Config init begin...----");
 		readConfig("config/app.config");
 		readConfig("config/user.config");
-		System.out.println("----Config ini end...----");
+		logger.info("----Config ini end...----");
 		// 根据Global.settings 初始化配置
 		Global.init();
 	}
@@ -111,7 +116,7 @@ public class ConfigUtil {
 				}
 			}
 		} catch (IOException e) {
-			System.err.println("保存文件失败!! ");
+			logger.error("保存文件失败!! ");
 			return false;
 		}
 		if(tmp.exists()) {
@@ -130,12 +135,12 @@ public class ConfigUtil {
 					Matcher matcher = patternConfig.matcher(config);
 					if (matcher.find()) {
 						Global.settings.put(matcher.group(1), matcher.group(2).trim());
-						System.out.printf("  key-->value:  %s --> %s\r\n", matcher.group(1), matcher.group(2));
+						logger.info(String.format("  key-->value:  %s --> %s\r\n", matcher.group(1), matcher.group(2)));
 					}
 					config = buReader.readLine();
 				}
 			} catch (IOException e) {
-				System.out.println("配置文件不存在! ");
+				logger.info("配置文件不存在! ");
 			}
 		}
 	}

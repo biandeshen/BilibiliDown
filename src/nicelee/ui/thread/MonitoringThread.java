@@ -13,8 +13,12 @@ import nicelee.ui.Global;
 import nicelee.ui.SysTray;
 import nicelee.ui.item.DownloadInfoPanel;
 
+import org.slf4j.LoggerFactory;
+
 public class MonitoringThread extends Thread {
-	
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(MonitoringThread.class);
+
 	private static final java.util.regex.Pattern AV_PATTERN = java.util.regex.Pattern.compile("(?:av|h|cv|opus|BV|season|au|edd_)[0-9a-zA-Z_]+-[0-9]+-p[0-9]+");
 	
 	public MonitoringThread() {
@@ -198,10 +202,10 @@ public class MonitoringThread extends Thread {
 			}
 			lastActiveTaskCount = activeTask;
 			try {
-				Thread.sleep(1500);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+			Thread.sleep(1500);
+		} catch (InterruptedException e) {
+			logger.error("异常", e);
+		}
 		}
 	}
 	/**

@@ -17,7 +17,11 @@ import nicelee.bilibili.util.Logger;
 import nicelee.ui.item.MJTitleBar;
 import nicelee.ui.item.impl.TextTransferHandler;
 
+import org.slf4j.LoggerFactory;
+
 public class FrameAbout extends JFrame implements HyperlinkListener {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(FrameAbout.class);
 
 	private static final long serialVersionUID = -5017130575041108799L;
 	private static FrameAbout frame;
@@ -49,7 +53,7 @@ public class FrameAbout extends JFrame implements HyperlinkListener {
 		try {
 			editorPane.setPage(this.getClass().getResource("/resources/about.html"));
 		} catch (Exception ex) {
-			ex.printStackTrace();
+			logger.error("异常", ex);
 		}
 		editorPane.addHyperlinkListener(this);
 		JScrollPane scrollPane = new JScrollPane(editorPane, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
@@ -84,7 +88,7 @@ public class FrameAbout extends JFrame implements HyperlinkListener {
 					desktop.open(file);
 				}
 			} catch (Exception e1) {
-				e1.printStackTrace();
+				logger.error("异常", e1);
 			}
 		}
 	}

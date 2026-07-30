@@ -11,11 +11,15 @@ import nicelee.bilibili.util.ResourcesUtil;
 import nicelee.ui.item.JOptionPane;
 import nicelee.ui.thread.DownloadRunnable;
 
+import org.slf4j.LoggerFactory;
+
 /**
  * 初始化检查要放在配置文件读取之后
  *
  */
 public class InitCheck {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(InitCheck.class);
 
 	public static void main(String[] args) {
 		checkFileAccess();

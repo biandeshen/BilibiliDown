@@ -10,8 +10,13 @@ import nicelee.bilibili.annotations.Controller;
 import nicelee.bilibili.annotations.Value;
 import nicelee.server.util.ResponseUtil;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Controller(path = "/static", note = "静态文件")
 public class ControllerStaticFiles {
+
+	private static final Logger logger = LoggerFactory.getLogger(ControllerStaticFiles.class);
 
 	@Controller(path = "/index.html", matchAll = true, note = "html主页")
 	public String html(BufferedWriter out, OutputStream outRaw, @Value(key = "pathData") String path) {
@@ -57,7 +62,7 @@ public class ControllerStaticFiles {
 				ResponseUtil.endResponseHeader(out);
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("异常", e);
 		}
 	}
 

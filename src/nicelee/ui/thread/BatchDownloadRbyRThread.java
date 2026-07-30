@@ -21,7 +21,11 @@ import nicelee.bilibili.util.custom.System;
 import nicelee.ui.Global;
 import nicelee.ui.item.DownloadInfoPanel;
 
+import org.slf4j.LoggerFactory;
+
 public class BatchDownloadRbyRThread extends BatchDownloadThread {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(BatchDownloadRbyRThread.class);
 
 	private static ConcurrentHashMap<ClipInfo, TaskInfo> currentTaskList;
 	private static long batchDownloadBeginTime;
@@ -175,14 +179,14 @@ public class BatchDownloadRbyRThread extends BatchDownloadThread {
 				}
 				runBatchDownloadOnce();
 				try {
-					sleep(timeToSleep(plans, System.currentTimeMillis()));
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
+				sleep(timeToSleep(plans, System.currentTimeMillis()));
+			} catch (InterruptedException e) {
+				logger.error("异常", e);
 			}
-		} catch (ParseException e) {
-			e.printStackTrace();
 		}
+	} catch (ParseException e) {
+		logger.error("异常", e);
+	}
 		
 	}
 
@@ -194,38 +198,38 @@ public class BatchDownloadRbyRThread extends BatchDownloadThread {
 			long expTime = sdf_0.parse("2025-01-29 08:21:29").getTime();
 			long nutTime = 1706602889L * 1000L;
 			long delta = expTime- nutTime;
-			System.out.println(expTime);
-			System.out.println(nutTime);
-			System.out.println(delta/1000/60/60/24);
+		logger.info("{}", expTime);
+		logger.info("{}", nutTime);
+		logger.info("{}", delta/1000/60/60/24);
 			System.exit(1);
 			BatchDownloadRbyRThread ooxx = new BatchDownloadRbyRThread("");
 			String plan = "06:00~02:00=>r(300,480); 02:00~04:00=>~06:00+r(0,360); 00:00~00:00=>r(30,31)";
 			String[] plans = plan.split(";");
 			
 			long curTime = sdf.parse("2024-01-21 21:01").getTime(); // 返回随机 [300,480) s
-			for(int i=0;i<10; i++) {
-				long tt = ooxx.timeToSleep(plans, curTime);
-				System.out.println("sleep(s) " + tt/1000);
-			}
-			System.out.println("-----------------------------");
-			curTime = sdf.parse("2024-01-21 02:01").getTime(); // 到2024-01-21 06:01 有239min 再加上 [0~360)s
-			
-			for(int i=0;i<10; i++) {
-				long tt = ooxx.timeToSleep(plans, curTime);
-				System.out.println("sleep(min) " + tt/1000/60);
-			}
-			
-			System.out.println("-----------------------------");
-			curTime = sdf.parse("2024-01-21 04:01").getTime(); // 返回 30s
-			
-			for(int i=0;i<10; i++) {
-				long tt = ooxx.timeToSleep(plans, curTime);
-				System.out.println("sleep(s) " + tt/1000);
-			}
-			
-		} catch (ParseException e) {
-			e.printStackTrace();
+		for(int i=0;i<10; i++) {
+			long tt = ooxx.timeToSleep(plans, curTime);
+			logger.info("sleep(s) " + tt/1000);
 		}
+		logger.info("-----------------------------");
+		curTime = sdf.parse("2024-01-21 02:01").getTime(); // 到2024-01-21 06:01 有239min 再加上 [0~360)s
+
+		for(int i=0;i<10; i++) {
+			long tt = ooxx.timeToSleep(plans, curTime);
+			logger.info("sleep(min) " + tt/1000/60);
+		}
+
+		logger.info("-----------------------------");
+		curTime = sdf.parse("2024-01-21 04:01").getTime(); // 返回 30s
+
+		for(int i=0;i<10; i++) {
+			long tt = ooxx.timeToSleep(plans, curTime);
+			logger.info("sleep(s) " + tt/1000);
+		}
+
+	} catch (ParseException e) {
+		logger.error("异常", e);
+	}
 	}
 	
 	final static long MILLI_SECONDS_OF_ONE_DAY = 1000 * 60 * 60 * 24;

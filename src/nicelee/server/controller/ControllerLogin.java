@@ -10,8 +10,13 @@ import nicelee.server.util.ResponseUtil;
 import nicelee.ui.DialogLogin;
 import nicelee.ui.DialogSMSLogin;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Controller(path = "/geetest", note = "极验参数")
 public class ControllerLogin {
+
+	private static final Logger logger = LoggerFactory.getLogger(ControllerLogin.class);
 
 	@Controller(path = "/login", matchAll = true, note = "根据传入的参数发起登录请求")
 	public String login(BufferedWriter out, OutputStream outRaw, @Value(key = "postData") String param) {
