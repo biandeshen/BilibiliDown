@@ -20,7 +20,9 @@ simplelogger.properties
 /target
 /config
 /release/ffmpeg
-/release/config
+/release/config/*
+!/release/config/app.config
+!/release/config/favicon.ico
 /release/zip
 /release/wiki
 /release/parsers1
