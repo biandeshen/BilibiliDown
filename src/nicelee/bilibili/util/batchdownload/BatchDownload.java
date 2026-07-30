@@ -383,8 +383,8 @@ public class BatchDownload implements Cloneable {
 		boolean dbTrackingEnabled = (state != null);
 		int startPage = batch.getStartPage();
 
-		// 检测 startPage 配置变化，重置进度
-		if (dbTrackingEnabled && state.startPageSnapshot != startPage) {
+		// 检测 startPage 配置变化，重置进度（增量模式下 startPage 无意义，不重置）
+		if (dbTrackingEnabled && !state.fullScanDone && state.startPageSnapshot != startPage) {
 			Logger.println("[配置变更] " + entryKey + " startPage " + state.startPageSnapshot + " -> " + startPage + "，重置扫描进度");
 			DynamicsDB.resetBatchScan(entryKey, startPage);
 			state = new DynamicsDB.BatchScanState(false, 0, startPage);
@@ -411,7 +411,11 @@ public class BatchDownload implements Cloneable {
 		int consecutiveNoNewPages = 0; // 增量模式连续无新增页计数
 		final int INCREMENTAL_STOP_THRESHOLD = 2; // 连续2页无新增则停止
 		while (!stopFlag) {
-			if (!isPageable && page >= 2) break;
+			if (!isPageable && page >= 2) {
+				// 非分页URL只有1页，处理完即自然结束
+				naturalEnd = true;
+				break;
+			}
 			String sp = validStr + " p=" + page;
 			try {
 				VideoInfo avInfo = ina.getVideoDetail(sp, Global.downloadFormat, false);
@@ -420,7 +424,6 @@ public class BatchDownload implements Cloneable {
 					naturalEnd = true;
 					break;
 				}
-				consecutiveErrors = 0; // 本页成功，重置错误计数
 				int newItemsOnThisPage = 0;
 				for (ClipInfo clip : clips) {
 					if (batch.matchStopCondition(clip, page)) {
@@ -443,6 +446,7 @@ public class BatchDownload implements Cloneable {
 						}
 					}
 				}
+				consecutiveErrors = 0; // 整页处理成功，重置错误计数
 				// 全量模式：每页成功后保存扫描进度（供断点续扫）
 				if (dbTrackingEnabled && !isIncremental && !stopFlag) {
 					DynamicsDB.updateBatchScanPage(entryKey, page, startPage);

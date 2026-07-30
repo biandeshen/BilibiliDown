@@ -190,7 +190,7 @@ st.execute(
 				"SELECT COUNT(*) FROM large_file_queue WHERE status=0")) {
 			ResultSet rs = ps.executeQuery();
 			return rs.next() ? rs.getInt(1) : 0;
-		} catch (SQLException e) { return 0; }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); return 0; }
 	}
 
 	// ===== 扫描状态 =====
