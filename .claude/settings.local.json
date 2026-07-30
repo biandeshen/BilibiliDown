@@ -71,7 +71,16 @@
       "Bash(cmd /c \"package.bat < nul\")",
       "Bash(cmd /c package.bat)",
       "PowerShell($p = Start-Process -FilePath \"F:\\\\WorkSpace\\\\BilibiliDown\\\\package.bat\" -WorkingDirectory \"F:\\\\WorkSpace\\\\BilibiliDown\" -Wait -NoNewWindow -PassThru 2>&1; \"exit=$\\($p.ExitCode\\)\")",
-      "PowerShell($p = Start-Process -FilePath \"F:\\\\WorkSpace\\\\BilibiliDown\\\\package.bat\" -WorkingDirectory \"F:\\\\WorkSpace\\\\BilibiliDown\" -Wait -NoNewWindow -PassThru; \"exit=$\\($p.ExitCode\\)\")"
+      "PowerShell($p = Start-Process -FilePath \"F:\\\\WorkSpace\\\\BilibiliDown\\\\package.bat\" -WorkingDirectory \"F:\\\\WorkSpace\\\\BilibiliDown\" -Wait -NoNewWindow -PassThru; \"exit=$\\($p.ExitCode\\)\")",
+      "Bash(rm -rf _pkg _fix_all.py _fixpkg.py)",
+      "Bash(rm -f .git/index.lock)",
+      "Bash(find /f \"F:/WorkSpace/BilibiliDown\" -name \"dynamics.mv.db\")",
+      "Bash(find /f \"F:/WorkSpace/BilibiliDown\" -name \"dynamics.trace.db\")",
+      "Bash(taskkill //F //IM java.exe)",
+      "Bash(taskkill //F //IM javaw.exe)",
+      "Bash(powershell *)",
+      "Bash(package.bat *)",
+      "PowerShell(.\\\\package.bat)"
     ]
   }
 }

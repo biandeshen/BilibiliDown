@@ -404,10 +404,21 @@ public abstract class AbstractBaseParser implements IInputParser {
 			Logger.println(url);
 //			List cookie = downloadFormat == 2 ? null : HttpCookies.globalCookiesWithFingerprint();
 			List<HttpCookie> cookie = HttpCookies.globalCookiesWithFingerprint();
-			String json = util.getContent(url, headers.getBiliJsonAPIHeaders(bvId), cookie);
-			Logger.println(json);
-			JSONObject jResp = new JSONObject(json);
-			if (jResp.optInt("code") != 0) {
+			String json = null; JSONObject jResp = null;
+			int retry87008 = 0, maxRetry87008 = 5;
+			while (true) {
+				json = util.getContent(url, headers.getBiliJsonAPIHeaders(bvId), cookie);
+				Logger.println(json);
+				jResp = new JSONObject(json);
+				int playurlCode = jResp.optInt("code");
+				if (playurlCode == 0) break;
+				if (playurlCode == 87008 && retry87008 < maxRetry87008) {
+					retry87008++;
+					long wait = retry87008 * 20000L;
+					Logger.println("playurl rate limited (87008), retry " + retry87008 + "/" + maxRetry87008 + " after " + wait + "ms");
+					try { Thread.sleep(wait); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); throw new ApiLinkQueryParseError("playurl retry interrupted"); }
+					continue;
+				}
 				Logger.println("playurl API error: " + jResp.optString("message"));
 				throw new ApiLinkQueryParseError("playurl failed: " + jResp.optString("message"));
 			}

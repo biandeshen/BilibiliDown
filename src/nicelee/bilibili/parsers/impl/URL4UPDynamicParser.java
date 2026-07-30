@@ -70,7 +70,10 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 		boolean isInitialDone = DynamicsDB.isInitialScanDone(spaceID);
 
 		if (page == 1) {
-			currentOffset = "";
+			currentOffset = DynamicsDB.getLastOffset(spaceID);
+			if (currentOffset == null) currentOffset = "";
+			if (!currentOffset.isEmpty())
+				Logger.println("UP " + spaceID + " resuming from saved offset: " + currentOffset);
 		}
 
 		// 已被标记为无更多数据
@@ -119,6 +122,8 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 				if (!DynamicsDB.contains(spaceID, dynamicId))
 					recordDynamicToDB(spaceID, dynamicId, type, mods);
 				else videoKnown++;
+				if (pageQueryResult.getVideoName() == null && mods != null)
+					trySetAuthorInfo(mods);
 				if (!"DYNAMIC_TYPE_AV".equals(type)) continue;
 				videoOnPage++;
 
@@ -126,7 +131,6 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 					JSONObject modules = item.getJSONObject("modules");
 					JSONObject major = modules.getJSONObject("module_dynamic")
 							.getJSONObject("major");
-
 					if (!major.has("archive")) {
 						continue;
 					}
@@ -144,16 +148,8 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 
 					// 获取视频详细信息
 					VideoInfo video = getAVDetail(bvid, videoFormat, getVideoLink);
-
-					// 设置UP主信息(第一次)
-					if (pageQueryResult.getVideoName() == null) {
-						JSONObject moduleAuthor = modules.getJSONObject("module_author");
-						pageQueryResult.setVideoId(spaceID);
-						pageQueryResult.setAuthor(moduleAuthor.getString("name"));
-						pageQueryResult.setAuthorId(spaceID);
-						pageQueryResult.setVideoName(pageQueryResult.getAuthor() + " - videos");
-						pageQueryResult.setBrief("videos - " + paramSetter.getPage());
-					}
+					// 确保UP主信息已设置（一般已在 trySetAuthorInfo 中设置，此处为保险）
+					ensureAuthorSet(modules);
 
 					// 将视频的clips加入结果
 					for (ClipInfo clip : video.getClips().values()) {
@@ -189,8 +185,11 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 			// 存储下一页的offset
 			if (hasMore && nextOffset != null && !nextOffset.isEmpty()) {
 				currentOffset = nextOffset;
+				if (pageQueryResult.getAuthor() != null)
+					DynamicsDB.setLastOffset(spaceID, pageQueryResult.getAuthor(), nextOffset, 0);
 			} else {
 				currentOffset = null;
+				DynamicsDB.setLastOffset(spaceID, pageQueryResult.getAuthor(), "", 0);
 				if (!isInitialDone) {
 					DynamicsDB.markInitialScanDone(spaceID, pageQueryResult.getAuthor());
 					Logger.println("UP " + spaceID + " full scan complete");
@@ -201,6 +200,7 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 			Logger.println("获取动态列表失败: " + e.getMessage());
 			e.printStackTrace();
 			currentOffset = null;
+			pageQueryResult.setHasMorePages(false);
 		}
 
 		return pageQueryResult;
@@ -255,5 +255,22 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 			}
 			DynamicsDB.insertDynamics(java.util.Collections.singletonList(di));
 		} catch (Exception e) { Logger.println("recordDynamicToDB error: " + e.getMessage()); }
+	}
+
+	// 从任意动态的 module_author 提取UP主信息，确保零视频UP主也能被记录
+	private void trySetAuthorInfo(JSONObject modules) {
+		try {
+			JSONObject moduleAuthor = modules.getJSONObject("module_author");
+			pageQueryResult.setVideoId(spaceID);
+			pageQueryResult.setAuthor(moduleAuthor.getString("name"));
+			pageQueryResult.setAuthorId(spaceID);
+			pageQueryResult.setVideoName(pageQueryResult.getAuthor() + " - videos");
+			pageQueryResult.setBrief("videos - " + paramSetter.getPage());
+		} catch (Exception e) {}
+	}
+
+	private void ensureAuthorSet(JSONObject modules) {
+		if (pageQueryResult.getVideoName() == null)
+			trySetAuthorInfo(modules);
 	}
 }

@@ -21,6 +21,8 @@ import nicelee.bilibili.INeedAV;
 import nicelee.bilibili.model.ClipInfo;
 import nicelee.bilibili.model.VideoInfo;
 import nicelee.bilibili.enums.VideoQualityEnum;
+import nicelee.bilibili.util.DynamicsDB;
+import nicelee.bilibili.util.RepoUtil;
 import nicelee.ui.Global;
 import nicelee.ui.item.DownloadInfoPanel;
 import nicelee.ui.thread.DownloadRunnable;
@@ -371,36 +373,65 @@ public class BatchDownload implements Cloneable {
 		java.util.regex.Matcher m = pagePattern.matcher(validStr);
 		boolean isPageable = m.find();
 		if (isPageable) validStr = validStr.replaceFirst("p=[0-9]+$", "");
+
+		// 增量模式：检查是否已完成全量遍历
+		String entryKey = batch.getUrl();
+		boolean isIncremental = DynamicsDB.isBatchScanDone(entryKey);
+
 		int page = batch.getStartPage();
+		if (isIncremental) {
+			page = 1;
+			Logger.println("[增量模式] " + entryKey + " 已全量遍历过，从第1页扫描新增");
+		}
+
 		boolean stopFlag = false;
+		boolean naturalEnd = false;
 		while (!stopFlag) {
 			if (!isPageable && page >= 2) break;
 			String sp = validStr + " p=" + page;
 			try {
 				VideoInfo avInfo = ina.getVideoDetail(sp, Global.downloadFormat, false);
 				java.util.Collection<ClipInfo> clips = avInfo.getClips().values();
-				if (clips.size() == 0 && !avInfo.getHasMorePages()) break;
+				if (clips.size() == 0 && !avInfo.getHasMorePages()) {
+					naturalEnd = true;
+					break;
+				}
+				int newItemsOnThisPage = 0;
 				for (ClipInfo clip : clips) {
 					if (batch.matchStopCondition(clip, page)) {
 						if (batch.isIncludeBoundsBV() && batch.matchDownloadCondition(clip, page)) {
 							String dedupKey = clip.getAvId() + "-p" + clip.getPage();
-							if (dedupCache.add(dedupKey) && !existsInDownloadList(clip)) {
+							if (dedupCache.add(dedupKey) && !existsInDownloadList(clip) && !RepoUtil.isBvInRepo(clip.getAvId())) {
 								Global.queryThreadPool.execute(new DownloadRunnable(avInfo, clip, VideoQualityEnum.getQN(Global.menu_qn)));
+								newItemsOnThisPage++;
 							}
 						}
 						stopFlag = true; break;
 					}
 					if (batch.matchDownloadCondition(clip, page)) {
 						String dedupKey = clip.getAvId() + "-p" + clip.getPage();
-						if (dedupCache.add(dedupKey) && !existsInDownloadList(clip)) {
+						if (dedupCache.add(dedupKey) && !existsInDownloadList(clip) && !RepoUtil.isBvInRepo(clip.getAvId())) {
 							Global.queryThreadPool.execute(new DownloadRunnable(avInfo, clip, VideoQualityEnum.getQN(Global.menu_qn)));
+							newItemsOnThisPage++;
 						}
 					}
 				}
 				page++;
 				Thread.sleep(Global.sleepBetweenPages);
+				// 增量模式：本页无新增则停止
+				if (isIncremental && newItemsOnThisPage == 0 && !stopFlag) {
+					naturalEnd = true;
+					break;
+				}
 			} catch (Exception e) { e.printStackTrace(); break; }
 		}
+
+		// 自然结束 + 非 stopCondition 中断 → 标记完成
+		if (!isIncremental && naturalEnd && !stopFlag) {
+			DynamicsDB.markBatchScanDone(entryKey);
+			Logger.println("[全量遍历完成] " + entryKey + " 已标记，后续运行将进入增量模式");
+		}
+
 		// 等活跃下载降到阈值以下再处理下一个UP
 		while (Global.downloadTab != null && Global.downloadTab.activeTask > Global.maxConcurrentUp) {
 			try { Thread.sleep(5000); } catch (InterruptedException e) { break; }

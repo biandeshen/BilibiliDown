@@ -101,7 +101,14 @@ st.execute(
 				"  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
 		st.execute("CREATE INDEX IF NOT EXISTS idx_lfq_status ON large_file_queue(status)");
 		st.execute("CREATE INDEX IF NOT EXISTS idx_lfq_uid ON large_file_queue(uid)");
-		
+
+		st.execute(
+			"CREATE TABLE IF NOT EXISTS batch_scan_status (" +
+			"  entry_key VARCHAR PRIMARY KEY," +
+			"  full_scan_done INTEGER DEFAULT 0," +
+			"  last_scan_time VARCHAR," +
+			"  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
+			"  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
 		}
 	}
 
@@ -223,6 +230,27 @@ st.execute(
 			ps.setString(2, upName);
 			ps.setString(3, offset);
 			ps.setLong(4, lastPubTimestamp);
+			ps.executeUpdate();
+		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
+	}
+
+	// ===== 批量下载扫描状态 =====
+	public static synchronized boolean isBatchScanDone(String entryKey) {
+		if (!dbAvailable) return false;
+		try (PreparedStatement ps = conn.prepareStatement(
+				"SELECT full_scan_done FROM batch_scan_status WHERE entry_key=?")) {
+			ps.setString(1, entryKey);
+			ResultSet rs = ps.executeQuery();
+			return rs.next() && rs.getInt(1) == 1;
+		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); return false; }
+	}
+
+	public static synchronized void markBatchScanDone(String entryKey) {
+		if (!dbAvailable) return;
+		try (PreparedStatement ps = conn.prepareStatement(
+				"MERGE INTO batch_scan_status (entry_key, full_scan_done, last_scan_time, updated_at)" +
+				" VALUES (?,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)")) {
+			ps.setString(1, entryKey);
 			ps.executeUpdate();
 		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
 	}
