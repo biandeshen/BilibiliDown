@@ -77,11 +77,21 @@ public class MonitoringThread extends Thread {
 								BatchDownloadRbyRThread.taskFail(dp.getClipInfo(), "fail");
 							}
 						}else {
-							pauseTaskCanRetry++;
-							dp.getLbCurrentStatus().setText(String.format("下载异常. 尝试重连 %d ", dp.getFailCnt()));
-							dp.setFailCnt(dp.getFailCnt() + 1);
+						pauseTaskCanRetry++;
+						// 指数退避: 第1次重试等5s, 第2次等15s, 第3次等30s...
+						int failCnt = dp.getFailCnt() + 1;
+						dp.setFailCnt(failCnt);
+						long backoffMs = 5000L * failCnt * (failCnt + 1) / 2;
+						dp.getLbCurrentStatus().setText(String.format("下载异常. %ds后尝试重连 %d ", backoffMs / 1000, failCnt));
+						new Thread(() -> {
+							try {
+								Thread.sleep(backoffMs);
+							} catch (InterruptedException e) {
+								return;
+							}
 							dp.continueTask();
-						}
+						}).start();
+					}
 						dp.setBackground(lightRed);
 						break;
 					case STOP:

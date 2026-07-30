@@ -112,8 +112,10 @@ public class Global {
 	public static long largeFileThreshold;
 	@Config(key = "bilibili.download.period.between.query", note = "每个关于下载的查询任务完成后的等待时间(ms)", defaultValue = "0", multiply = 1)
 	public static long sleepAfterDownloadQuery;
+	@Config(key = "bilibili.download.query.poolSize", note = "查询线程池大小(1=串行,2~3可提速)", defaultValue = "1", multiply = 1)
+	public static int queryPoolSize;
 	public static ExecutorService downLoadThreadPool;// 下载线程池
-	// 查询线程池(同一时间并发不能太多,为了保证任务面板的顺序，采用fixed(1))
+	// 查询线程池(可配置大小,默认1串行,设为2~3可提升查询吞吐量)
 	public static ExecutorService queryThreadPool = Executors.newFixedThreadPool(1);//
 //	public static ExecutorService ccThreadPool = Executors.newFixedThreadPool(1);// 用于字幕下载
 	public static JTabbedPane tabs; // 下载显示界面
@@ -281,6 +283,11 @@ public class Global {
 		}
 		// 特殊处理
 		downLoadThreadPool = DownloadExecutors.newPriorityFixedThreadPool(downloadPoolSize);
+		// 根据配置重建查询线程池(默认1串行,可配置为2~3提升吞吐量)
+		if (queryPoolSize > 1) {
+			queryThreadPool.shutdown();
+			queryThreadPool = Executors.newFixedThreadPool(queryPoolSize);
+		}
 		String savePath = ResourcesUtil.resolve(Global.savePath);
 		if (savePath.endsWith("\\")) {
 			savePath = savePath.substring(0, savePath.length() - 1) + "/";
