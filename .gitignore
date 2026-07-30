@@ -20,9 +20,7 @@ simplelogger.properties
 /target
 /config
 /release/ffmpeg
-/release/config/*
-!/release/config/app.config
-!/release/config/favicon.ico
+# /release/config intentionally NOT ignored - all files tracked
 /release/zip
 /release/wiki
 /release/parsers1
