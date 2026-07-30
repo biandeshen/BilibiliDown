@@ -26,8 +26,11 @@ import nicelee.bilibili.util.RepoUtil;
 import nicelee.ui.Global;
 import nicelee.ui.item.DownloadInfoPanel;
 import nicelee.ui.thread.DownloadRunnable;
+import org.slf4j.LoggerFactory;
 
 public class BatchDownload implements Cloneable {
+
+	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(BatchDownload.class);
 
 	String type;
 	String url;
@@ -386,6 +389,8 @@ public class BatchDownload implements Cloneable {
 
 		boolean stopFlag = false;
 		boolean naturalEnd = false;
+		int consecutiveErrors = 0;
+		final int MAX_CONSECUTIVE_ERRORS = 3;
 		while (!stopFlag) {
 			if (!isPageable && page >= 2) break;
 			String sp = validStr + " p=" + page;
@@ -396,6 +401,7 @@ public class BatchDownload implements Cloneable {
 					naturalEnd = true;
 					break;
 				}
+				consecutiveErrors = 0; // 本页成功，重置错误计数
 				int newItemsOnThisPage = 0;
 				for (ClipInfo clip : clips) {
 					if (batch.matchStopCondition(clip, page)) {
@@ -423,13 +429,25 @@ public class BatchDownload implements Cloneable {
 					naturalEnd = true;
 					break;
 				}
-			} catch (Exception e) { e.printStackTrace(); break; }
+			} catch (Exception e) {
+				logger.error("扫描第{}页异常: {}", page, e.getMessage(), e);
+				consecutiveErrors++;
+				if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+					logger.error("连续{}页异常，停止扫描（已扫描页将保留）", MAX_CONSECUTIVE_ERRORS);
+					break;
+				}
+				// 单页异常不中断，跳过本页继续下一页
+				page++;
+				try { Thread.sleep(Global.sleepBetweenPages); } catch (InterruptedException ie) { break; }
+			}
 		}
 
-		// 自然结束 + 非 stopCondition 中断 → 标记完成
-		if (!isIncremental && naturalEnd && !stopFlag) {
+		// 全量遍历完成判定：自然结束 或 命中停止边界 或 连续异常中断（已扫描部分足够）
+		// 核心改动：扫描完成与下载成功解耦——即使有视频下载失败，只要页面遍历过就标记完成
+		if (!isIncremental && (naturalEnd || stopFlag || consecutiveErrors >= MAX_CONSECUTIVE_ERRORS)) {
 			DynamicsDB.markBatchScanDone(entryKey);
-			Logger.println("[全量遍历完成] " + entryKey + " 已标记，后续运行将进入增量模式");
+			String reason = naturalEnd ? "自然结束" : (stopFlag ? "命中边界" : "连续异常中断");
+			logger.info("[全量遍历完成] {} {}，后续运行将进入增量模式", entryKey, reason);
 		}
 
 		// 等活跃下载降到阈值以下再处理下一个UP
