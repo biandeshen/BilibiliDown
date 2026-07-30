@@ -377,20 +377,39 @@ public class BatchDownload implements Cloneable {
 		boolean isPageable = m.find();
 		if (isPageable) validStr = validStr.replaceFirst("p=[0-9]+$", "");
 
-		// 增量模式：检查是否已完成全量遍历
+		// 扫描进度跟踪：DB可用时启用断点续扫
 		String entryKey = batch.getUrl();
-		boolean isIncremental = DynamicsDB.isBatchScanDone(entryKey);
+		DynamicsDB.BatchScanState state = DynamicsDB.getBatchScanProgress(entryKey);
+		boolean dbTrackingEnabled = (state != null);
+		int startPage = batch.getStartPage();
 
-		int page = batch.getStartPage();
+		// 检测 startPage 配置变化，重置进度
+		if (dbTrackingEnabled && state.startPageSnapshot != startPage) {
+			Logger.println("[配置变更] " + entryKey + " startPage " + state.startPageSnapshot + " -> " + startPage + "，重置扫描进度");
+			DynamicsDB.resetBatchScan(entryKey, startPage);
+			state = new DynamicsDB.BatchScanState(false, 0, startPage);
+		}
+
+		boolean isIncremental = dbTrackingEnabled && state.fullScanDone;
+		int page;
 		if (isIncremental) {
 			page = 1;
 			Logger.println("[增量模式] " + entryKey + " 已全量遍历过，从第1页扫描新增");
+		} else if (dbTrackingEnabled && state.lastScannedPage > 0) {
+			// 全量续扫：从上次最后扫描页开始，重叠1页防止内容漂移
+			page = state.lastScannedPage;
+			Logger.println("[续扫] " + entryKey + " 从第" + page + "页继续（重叠1页防漂移）");
+		} else {
+			page = startPage;
 		}
 
 		boolean stopFlag = false;
 		boolean naturalEnd = false;
+		boolean stopByCondition = false; // stopCondition触发（区别于自然结束）
 		int consecutiveErrors = 0;
 		final int MAX_CONSECUTIVE_ERRORS = 3;
+		int consecutiveNoNewPages = 0; // 增量模式连续无新增页计数
+		final int INCREMENTAL_STOP_THRESHOLD = 2; // 连续2页无新增则停止
 		while (!stopFlag) {
 			if (!isPageable && page >= 2) break;
 			String sp = validStr + " p=" + page;
@@ -412,7 +431,9 @@ public class BatchDownload implements Cloneable {
 								newItemsOnThisPage++;
 							}
 						}
-						stopFlag = true; break;
+						stopFlag = true;
+						stopByCondition = true;
+						break;
 					}
 					if (batch.matchDownloadCondition(clip, page)) {
 						String dedupKey = clip.getAvId() + "-p" + clip.getPage();
@@ -422,31 +443,44 @@ public class BatchDownload implements Cloneable {
 						}
 					}
 				}
+				// 全量模式：每页成功后保存扫描进度（供断点续扫）
+				if (dbTrackingEnabled && !isIncremental && !stopFlag) {
+					DynamicsDB.updateBatchScanPage(entryKey, page, startPage);
+				}
 				page++;
 				Thread.sleep(Global.sleepBetweenPages);
-				// 增量模式：本页无新增则停止
-				if (isIncremental && newItemsOnThisPage == 0 && !stopFlag) {
-					naturalEnd = true;
-					break;
+				// 增量模式：连续N页无新增则停止
+				if (isIncremental && !stopFlag) {
+					if (newItemsOnThisPage == 0) {
+						consecutiveNoNewPages++;
+						if (consecutiveNoNewPages >= INCREMENTAL_STOP_THRESHOLD) {
+							naturalEnd = true;
+							break;
+						}
+					} else {
+						consecutiveNoNewPages = 0; // 有新增则重置计数
+					}
 				}
 			} catch (Exception e) {
 				logger.error("扫描第{}页异常: {}", page, e.getMessage(), e);
 				consecutiveErrors++;
 				if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-					logger.error("连续{}页异常，停止扫描（已扫描页将保留）", MAX_CONSECUTIVE_ERRORS);
+					logger.error("连续{}页异常，停止扫描（已扫描页保留进度）", MAX_CONSECUTIVE_ERRORS);
 					break;
 				}
-				// 单页异常不中断，跳过本页继续下一页
+				// 单页异常不中断，重置无新增计数（防止API错误导致误判），跳过本页继续
+				consecutiveNoNewPages = 0;
 				page++;
 				try { Thread.sleep(Global.sleepBetweenPages); } catch (InterruptedException ie) { break; }
 			}
 		}
 
-		// 自然结束 + 非 stopCondition 中断 → 标记完成
-		if (!isIncremental && naturalEnd && !stopFlag) {
+		// 全量扫描自然结束（非stopCondition、非异常中断）→ 标记完成
+		if (dbTrackingEnabled && !isIncremental && naturalEnd && !stopByCondition) {
 			DynamicsDB.markBatchScanDone(entryKey);
 			logger.info("[全量遍历完成] {} 后续运行将进入增量模式", entryKey);
 		}
+		// stopByCondition 或 连续异常中断 不标记完成，保留 last_scanned_page 供下次续扫
 
 		// 等活跃下载降到阈值以下再处理下一个UP
 		while (Global.downloadTab != null && Global.downloadTab.activeTask > Global.maxConcurrentUp) {

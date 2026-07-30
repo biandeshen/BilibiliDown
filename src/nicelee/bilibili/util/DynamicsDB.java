@@ -36,6 +36,7 @@ public class DynamicsDB {
 				conn = DriverManager.getConnection(
 				"jdbc:h2:file:" + DB_PATH + ";TRACE_LEVEL_FILE=0;AUTO_SERVER=TRUE", "sa", "");
 			createTables();
+			migrateSchema();
 				dbAvailable = true;
 			Logger.println("DynamicsDB initialized: " + DB_PATH);
 		} catch (Exception e) {
@@ -106,6 +107,8 @@ st.execute(
 			"CREATE TABLE IF NOT EXISTS batch_scan_status (" +
 			"  entry_key VARCHAR PRIMARY KEY," +
 			"  full_scan_done INTEGER DEFAULT 0," +
+			"  last_scanned_page INTEGER DEFAULT 0," +
+			"  start_page_snapshot INTEGER DEFAULT 0," +
 			"  last_scan_time VARCHAR," +
 			"  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
 			"  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
@@ -129,7 +132,7 @@ st.execute(
 			ps.setInt(12, qn);
 			ps.setString(13, formattedTitle);
 			ps.executeUpdate();
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); }
 	}
 
 	public static synchronized List<LargeFileItem> getPendingLargeFiles() {
@@ -159,7 +162,7 @@ st.execute(
 				item.page = rs.getInt(15);
 				list.add(item);
 			}
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); }
 		return list;
 	}
 
@@ -169,7 +172,7 @@ st.execute(
 				"UPDATE large_file_queue SET status=1 WHERE id=?")) {
 			ps.setInt(1, id);
 			ps.executeUpdate();
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); }
 	}
 
 	public static synchronized void markLargeFileIgnored(int id) {
@@ -178,7 +181,7 @@ st.execute(
 				"UPDATE large_file_queue SET status=-1 WHERE id=?")) {
 			ps.setInt(1, id);
 			ps.executeUpdate();
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); }
 	}
 
 	public static synchronized int countPendingLargeFiles() {
@@ -198,7 +201,7 @@ st.execute(
 			ps.setString(1, uid);
 			ResultSet rs = ps.executeQuery();
 			return rs.next() && rs.getInt(1) == 1;
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); return false; }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); return false; }
 	}
 
 	public static synchronized void markInitialScanDone(String uid, String upName) {
@@ -208,7 +211,7 @@ st.execute(
 			ps.setString(1, uid);
 			ps.setString(2, upName);
 			ps.executeUpdate();
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); }
 	}
 
 	public static synchronized String getLastOffset(String uid) {
@@ -218,7 +221,7 @@ st.execute(
 			ps.setString(1, uid);
 			ResultSet rs = ps.executeQuery();
 			return rs.next() ? rs.getString(1) : "";
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); return ""; }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); return ""; }
 	}
 
 	public static synchronized void setLastOffset(String uid, String upName, String offset, long lastPubTimestamp) {
@@ -231,7 +234,7 @@ st.execute(
 			ps.setString(3, offset);
 			ps.setLong(4, lastPubTimestamp);
 			ps.executeUpdate();
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); }
 	}
 
 	// ===== 批量下载扫描状态 =====
@@ -242,17 +245,90 @@ st.execute(
 			ps.setString(1, entryKey);
 			ResultSet rs = ps.executeQuery();
 			return rs.next() && rs.getInt(1) == 1;
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); return false; }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); return false; }
 	}
 
+	/**
+	 * 获取批量扫描进度。DB 不可用时返回 null，调用方应跳过进度跟踪。
+	 * 无记录时返回 fullScanDone=false, lastScannedPage=0, startPageSnapshot=0
+	 */
+	public static synchronized BatchScanState getBatchScanProgress(String entryKey) {
+		if (!dbAvailable) return null;
+		try (PreparedStatement ps = conn.prepareStatement(
+				"SELECT full_scan_done, last_scanned_page, start_page_snapshot FROM batch_scan_status WHERE entry_key=?")) {
+			ps.setString(1, entryKey);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next()) {
+				return new BatchScanState(rs.getInt(1) == 1, rs.getInt(2), rs.getInt(3));
+			}
+			return new BatchScanState(false, 0, 0);
+		} catch (SQLException e) {
+			Logger.println("DynamicsDB getBatchScanProgress: " + e.getMessage());
+			checkConnectionValidity(e);
+			return null;
+		}
+	}
+
+	/**
+	 * 更新扫描进度（不标记完成）。在全量扫描每页成功后调用。
+	 */
+	public static synchronized void updateBatchScanPage(String entryKey, int page, int startPage) {
+		if (!dbAvailable) return;
+		try (PreparedStatement ps = conn.prepareStatement(
+				"MERGE INTO batch_scan_status (entry_key, full_scan_done, last_scanned_page, start_page_snapshot, last_scan_time, updated_at)" +
+				" VALUES (?, 0, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)")) {
+			ps.setString(1, entryKey);
+			ps.setInt(2, page);
+			ps.setInt(3, startPage);
+			ps.executeUpdate();
+		} catch (SQLException e) {
+			Logger.println("DynamicsDB updateBatchScanPage: " + e.getMessage());
+			checkConnectionValidity(e);
+		}
+	}
+
+	/**
+	 * 重置扫描进度（当 startPage 配置变化时调用）
+	 */
+	public static synchronized void resetBatchScan(String entryKey, int startPage) {
+		if (!dbAvailable) return;
+		try (PreparedStatement ps = conn.prepareStatement(
+				"MERGE INTO batch_scan_status (entry_key, full_scan_done, last_scanned_page, start_page_snapshot, last_scan_time, updated_at)" +
+				" VALUES (?, 0, 0, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)")) {
+			ps.setString(1, entryKey);
+			ps.setInt(2, startPage);
+			ps.executeUpdate();
+		} catch (SQLException e) {
+			Logger.println("DynamicsDB resetBatchScan: " + e.getMessage());
+			checkConnectionValidity(e);
+		}
+	}
+
+	/**
+	 * 标记全量扫描完成，同时清除 last_scanned_page（后续进入增量模式）
+	 */
 	public static synchronized void markBatchScanDone(String entryKey) {
 		if (!dbAvailable) return;
 		try (PreparedStatement ps = conn.prepareStatement(
-				"MERGE INTO batch_scan_status (entry_key, full_scan_done, last_scan_time, updated_at)" +
-				" VALUES (?,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)")) {
+				"MERGE INTO batch_scan_status (entry_key, full_scan_done, last_scanned_page, start_page_snapshot, last_scan_time, updated_at)" +
+				" VALUES (?, 1, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)")) {
 			ps.setString(1, entryKey);
 			ps.executeUpdate();
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); }
+	}
+
+	/**
+	 * 批量扫描进度状态
+	 */
+	public static class BatchScanState {
+		public final boolean fullScanDone;
+		public final int lastScannedPage;
+		public final int startPageSnapshot;
+		public BatchScanState(boolean fullScanDone, int lastScannedPage, int startPageSnapshot) {
+			this.fullScanDone = fullScanDone;
+			this.lastScannedPage = lastScannedPage;
+			this.startPageSnapshot = startPageSnapshot;
+		}
 	}
 
 	// ===== 查询 =====
@@ -263,7 +339,7 @@ st.execute(
 			ps.setString(1, uid);
 			ps.setString(2, dynamicId);
 			return ps.executeQuery().next();
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); return false; }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); return false; }
 	}
 
 	public static synchronized boolean containsBvid(String uid, String bvid) {
@@ -273,7 +349,7 @@ st.execute(
 			ps.setString(1, uid);
 			ps.setString(2, bvid);
 			return ps.executeQuery().next();
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); return false; }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); return false; }
 	}
 
 	public static synchronized Set<String> getKnownBvids(String uid) {
@@ -284,7 +360,7 @@ st.execute(
 			ps.setString(1, uid);
 			ResultSet rs = ps.executeQuery();
 			while (rs.next()) set.add(rs.getString(1));
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); }
 		return set;
 	}
 
@@ -317,7 +393,7 @@ st.execute(
 			}
 			conn.commit();
 		} catch (SQLException e) {
-			dbAvailable = false;
+			checkConnectionValidity(e);
 			try { conn.rollback(); } catch (SQLException ignored) {}
 			Logger.println("DynamicsDB insert: " + e.getMessage());
 		} finally {
@@ -335,7 +411,7 @@ st.execute(
 			ps.setString(2, uid);
 			ps.setString(3, bvid);
 			ps.executeUpdate();
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); }
 	}
 
 	public static synchronized void markDownloadFailed(String uid, String bvid) {
@@ -345,10 +421,78 @@ st.execute(
 			ps.setString(1, uid);
 			ps.setString(2, bvid);
 			ps.executeUpdate();
-		} catch (SQLException e) { dbAvailable = false; Logger.println("DynamicsDB: " + e.getMessage()); }
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); }
 	}
 
 	// ===== 迁移 =====
+
+	/**
+	 * 幂等迁移：为已有 batch_scan_status 表补充新字段（兼容旧版本数据库）
+	 */
+	private static void migrateSchema() {
+		if (!dbAvailable) return;
+		try (Statement stmt = conn.createStatement()) {
+			// 检查并添加 last_scanned_page
+			ResultSet rs = stmt.executeQuery(
+				"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
+				"WHERE TABLE_NAME='BATCH_SCAN_STATUS' AND COLUMN_NAME='LAST_SCANNED_PAGE'");
+			if (!rs.next()) {
+				stmt.execute("ALTER TABLE batch_scan_status ADD COLUMN last_scanned_page INT DEFAULT 0");
+				Logger.println("Schema迁移: 添加 last_scanned_page 字段");
+			}
+			rs = stmt.executeQuery(
+				"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
+				"WHERE TABLE_NAME='BATCH_SCAN_STATUS' AND COLUMN_NAME='START_PAGE_SNAPSHOT'");
+			if (!rs.next()) {
+				stmt.execute("ALTER TABLE batch_scan_status ADD COLUMN start_page_snapshot INT DEFAULT 0");
+				Logger.println("Schema迁移: 添加 start_page_snapshot 字段");
+			}
+		} catch (SQLException e) {
+			Logger.println("Schema迁移失败(可忽略): " + e.getMessage());
+			// 迁移失败不设置 dbAvailable=false，可能是字段已存在等非致命错误
+		}
+	}
+
+	/**
+	 * 判断 SQLException 是否为连接级错误（SQLState 08xxx）
+	 * 仅连接级错误才禁用数据库并触发重连；SQL 逻辑错误不改变 dbAvailable
+	 */
+	private static void checkConnectionValidity(SQLException e) {
+		if (e == null) return;
+		String sqlState = e.getSQLState();
+		if (sqlState != null && sqlState.startsWith("08")) {
+			Logger.println("DynamicsDB: 连接异常 SQLState=" + sqlState + "，尝试重连...");
+			reconnectWithBackoff();
+		}
+		// 非08类异常（如约束冲突、语法错误）不改变 dbAvailable
+	}
+
+	/**
+	 * 指数退避重连：1s/2s/4s/8s/16s，最多5次
+	 */
+	private static void reconnectWithBackoff() {
+		long[] delays = { 1000, 2000, 4000, 8000, 16000 };
+		for (int i = 0; i < delays.length; i++) {
+			try {
+				Thread.sleep(delays[i]);
+			} catch (InterruptedException ie) {
+				Thread.currentThread().interrupt();
+				break;
+			}
+			try {
+				new File(DB_PATH + ".lock.db").delete();
+				conn = DriverManager.getConnection(
+					"jdbc:h2:file:" + DB_PATH + ";TRACE_LEVEL_FILE=0;AUTO_SERVER=TRUE", "sa", "");
+				dbAvailable = true;
+				Logger.println("DynamicsDB: 第" + (i + 1) + "次重连成功");
+				return;
+			} catch (Exception ex) {
+				Logger.println("DynamicsDB: 第" + (i + 1) + "次重连失败: " + ex.getMessage());
+			}
+		}
+		dbAvailable = false;
+		Logger.println("DynamicsDB: 重连全部失败，禁用数据库");
+	}
 
 
 	// ===== 大文件待确认项 =====
