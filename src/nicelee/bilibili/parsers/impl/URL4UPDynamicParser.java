@@ -119,13 +119,14 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 				String dynamicId = item.optString("id_str", "");
 				JSONObject mods = null;
 				try { mods = item.optJSONObject("modules"); } catch (Exception e) {}
-				if (!DynamicsDB.contains(spaceID, dynamicId))
+				boolean isKnown = DynamicsDB.contains(spaceID, dynamicId);
+				if (!isKnown)
 					recordDynamicToDB(spaceID, dynamicId, type, mods);
-				else videoKnown++;
 				if (pageQueryResult.getVideoName() == null && mods != null)
 					trySetAuthorInfo(mods);
 				if (!"DYNAMIC_TYPE_AV".equals(type)) continue;
 				videoOnPage++;
+				if (isKnown) videoKnown++;
 
 				try {
 					JSONObject modules = item.getJSONObject("modules");
