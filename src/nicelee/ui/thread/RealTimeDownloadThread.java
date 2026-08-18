@@ -31,6 +31,10 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -43,6 +47,12 @@ public class RealTimeDownloadThread extends Thread {
 	List<String> configFilePaths;
 	private volatile boolean paused = false;
 	private Map<String, Long> configLastModified = new HashMap<>();
+	// A+C方案: 扫描轮次计数器(每完成一轮+1),用于分桶判断
+	private int scanRound = 0;
+	// A方案: 并行扫描线程池(懒加载,复用)
+	private ExecutorService scanPool = null;
+	// 用于从 batch.getUrl() 提取 uid 的正则(space.bilibili.com/{uid}/dynamic)
+	private static final Pattern UID_PATTERN = Pattern.compile("space\\.bilibili\\.com/([0-9]+)/dynamic");
 
 	public RealTimeDownloadThread(List<String> configFiles) {
 		configFilePaths = new ArrayList<>();
@@ -60,55 +70,138 @@ public class RealTimeDownloadThread extends Thread {
 
 	@Override
 	public void run() {
-		while (!Thread.currentThread().isInterrupted()) {  // 添加无限循环
-			try {
-				while (paused && !Thread.currentThread().isInterrupted()) {
-					try { Thread.sleep(5000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
+		// A方案: 初始化并行扫描线程池
+		int parallel = Math.max(1, Global.scanParallelSize);
+		scanPool = Executors.newFixedThreadPool(parallel);
+		logger.info("[并行扫描] 线程池大小: {}", parallel);
+		try {
+			while (!Thread.currentThread().isInterrupted()) {  // 添加无限循环
+				try {
+					while (paused && !Thread.currentThread().isInterrupted()) {
+						try { Thread.sleep(5000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
+						}
+					// 修改5-混合方案: 每轮开始时拉取failed_tasks表,恢复跨会话的失败任务
+					recoverFailedTasks();
+					// A+C方案: 收集本轮所有该扫描的 batch
+					List<BatchDownload> batchesToScan = collectBatchesToScan();
+					if (batchesToScan.isEmpty()) {
+						logger.info("[分桶扫描] 本轮无 batch 需扫描,轮次 {}", scanRound);
+					} else {
+						logger.info("[分桶扫描] 本轮待扫描 batch 数: {}, 总配置数: {}, 轮次: {}",
+							batchesToScan.size(), configFilePaths.size(), scanRound);
+						// A方案: 并行处理所有 batch
+						processBatchesInParallel(batchesToScan);
 					}
-				// 修改5-混合方案: 每轮开始时拉取failed_tasks表,恢复跨会话的失败任务
-				recoverFailedTasks();
-				java.util.Collections.shuffle(configFilePaths);
-for (String configFilePath : configFilePaths) {
-					Logger.println("实时下载进行中");
-					File f = ResourcesUtil.search(configFilePath);
-					checkValid(f);
-					List<BatchDownload> bds = new BatchDownloadsBuilder(new FileInputStream(f)).Build();
-					BatchDownload.replaceVideoWithDynamic(bds);
-					Logger.println("实时下载进行中。。。。。");
-					Logger.println(bds);
-					for (BatchDownload batch : bds) {
-						Logger.printf("[url:%s] 任务开始", batch.getUrl());
-						BatchDownload.processBatchEntry(batch);
-						Logger.printf("[url:%s] 任务完毕", batch.getUrl());
+					// C方案: 轮次+1
+					scanRound++;
+					// 每次完整执行完for循环后等待30分钟
+					Logger.println("完成一轮实时下载，等待30分钟后继续...");
+					Thread.sleep(Global.sleepBetweenCycles); // 30分钟 = 30*60*1000毫秒
+				} catch (BilibiliError e) {
+					JOptionPaneManager.alertErrMsgWithNewThread("发生了预料之外的错误", ResourcesUtil.detailsOfException(e));
+					// 出错后也等待一段时间再继续
+					try {
+						Thread.sleep(Global.sleepBetweenCycles);
+					} catch (InterruptedException ie) {
+						Thread.currentThread().interrupt();
+						break;
 					}
-				}
-				// 每次完整执行完for循环后等待30分钟
-				Logger.println("完成一轮实时下载，等待30分钟后继续...");
-				Thread.sleep(Global.sleepBetweenCycles); // 30分钟 = 30*60*1000毫秒
-			} catch (BilibiliError e) {
-				JOptionPaneManager.alertErrMsgWithNewThread("发生了预料之外的错误", ResourcesUtil.detailsOfException(e));
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					break;
+				} catch (Exception e) {
+				logger.error("异常", e);
 				// 出错后也等待一段时间再继续
-				try {
-					Thread.sleep(Global.sleepBetweenCycles);
-				} catch (InterruptedException ie) {
-					Thread.currentThread().interrupt();
-					break;
+					try {
+						Thread.sleep(Global.sleepBetweenCycles);
+					} catch (InterruptedException ie) {
+						Thread.currentThread().interrupt();
+						break;
+					}
 				}
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				break;
-			} catch (Exception e) {
-			logger.error("异常", e);
-			// 出错后也等待一段时间再继续
-				try {
-					Thread.sleep(Global.sleepBetweenCycles);
-				} catch (InterruptedException ie) {
-					Thread.currentThread().interrupt();
-					break;
-				}
+			}
+		} finally {
+			// A方案: 退出时关闭线程池
+			if (scanPool != null) {
+				scanPool.shutdownNow();
+				try { scanPool.awaitTermination(5, TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
 			}
 		}
 		Logger.println("实时下载运行完毕");
+	}
+
+	/**
+	 * A+C方案: 收集本轮所有该扫描的 batch
+	 * 1. 遍历所有配置文件
+	 * 2. 对每个 batch 提取 uid,调用 shouldScanThisRound 过滤
+	 * 3. 返回本轮需要扫描的 batch 列表
+	 */
+	private List<BatchDownload> collectBatchesToScan() {
+		List<BatchDownload> batchesToScan = new ArrayList<>();
+		java.util.Collections.shuffle(configFilePaths);
+		int skippedCount = 0;
+		for (String configFilePath : configFilePaths) {
+			try {
+				Logger.println("实时下载进行中");
+				File f = ResourcesUtil.search(configFilePath);
+				checkValid(f);
+				List<BatchDownload> bds = new BatchDownloadsBuilder(new FileInputStream(f)).Build();
+				BatchDownload.replaceVideoWithDynamic(bds);
+				Logger.println("实时下载进行中。。。。。");
+				Logger.println(bds);
+				for (BatchDownload batch : bds) {
+					// C方案: 根据分桶级别决定是否扫描
+					String uid = extractUid(batch.getUrl());
+					if (uid != null && !DynamicsDB.shouldScanThisRound(uid, scanRound)) {
+						skippedCount++;
+						logger.debug("[分桶跳过] uid={} 轮次={} 本轮跳过", uid, scanRound);
+						continue;
+					}
+					batchesToScan.add(batch);
+				}
+			} catch (Exception e) {
+				logger.error("[配置加载失败] {} - {}", configFilePath, e.getMessage());
+			}
+		}
+		if (skippedCount > 0) {
+			logger.info("[分桶跳过] 本轮跳过 {} 个 batch (低频UP)", skippedCount);
+		}
+		return batchesToScan;
+	}
+
+	/**
+	 * A方案: 并行处理所有 batch
+	 * 每个 batch 提交到 scanPool,等待全部完成
+	 */
+	private void processBatchesInParallel(List<BatchDownload> batches) {
+		List<CompletableFuture<Void>> futures = new ArrayList<>(batches.size());
+		for (BatchDownload batch : batches) {
+			futures.add(CompletableFuture.runAsync(() -> {
+				try {
+					Logger.printf("[url:%s] 任务开始", batch.getUrl());
+					BatchDownload.processBatchEntry(batch);
+					Logger.printf("[url:%s] 任务完毕", batch.getUrl());
+				} catch (Exception e) {
+					logger.error("[扫描异常] url={} - {}", batch.getUrl(), e.getMessage(), e);
+				}
+			}, scanPool));
+		}
+		// 等待全部完成
+		try {
+			CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+		} catch (Exception e) {
+			logger.error("[并行扫描] 等待完成异常: {}", e.getMessage());
+		}
+	}
+
+	/**
+	 * 从 batch URL 提取 uid (如 space.bilibili.com/12345/dynamic -> 12345)
+	 * @return uid 字符串,无法提取返回 null
+	 */
+	private String extractUid(String url) {
+		if (url == null) return null;
+		Matcher m = UID_PATTERN.matcher(url);
+		return m.find() ? m.group(1) : null;
 	}
 
 

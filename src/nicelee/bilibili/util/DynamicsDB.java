@@ -305,6 +305,62 @@ st.execute(
 		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("DynamicsDB: " + e.getMessage()); return false; }
 	}
 
+	// ===== 分桶扫描(C方案) =====
+	// 桶分级: P0(7天内)P1(30天内)P2(90天内)P3(90天+),未全量扫描完成的UP总是P0
+	// 扫描频率: P0每轮 P1每2轮 P2每4轮 P3每8轮
+	private static final long SEVEN_DAYS_MS = 7L * 86400 * 1000;
+	private static final long THIRTY_DAYS_MS = 30L * 86400 * 1000;
+	private static final long NINETY_DAYS_MS = 90L * 86400 * 1000;
+
+	/**
+	 * 获取UP最新动态发布时间戳(从up_dynamics表查)
+	 * @return 0 表示无数据或查询失败
+	 */
+	public static synchronized long getLatestPubTimestamp(String uid) {
+		if (!dbAvailable || uid == null) return 0;
+		try (PreparedStatement ps = conn.prepareStatement(
+				"SELECT MAX(pub_timestamp) FROM up_dynamics WHERE uid=?")) {
+			ps.setString(1, uid);
+			ResultSet rs = ps.executeQuery();
+			return rs.next() ? rs.getLong(1) : 0;
+		} catch (SQLException e) { checkConnectionValidity(e); return 0; }
+	}
+
+	/**
+	 * 获取UP分桶级别(0-3)
+	 * 0=P0高频(7天内有更新),1=P1中频(30天),2=P2低频(90天),3=P3静默(90天+)
+	 * 未完成全量扫描的UP返回0(每轮必扫)
+	 */
+	public static synchronized int getBucketLevel(String uid) {
+		if (!dbAvailable || uid == null) return 0;
+		// 未完成全量扫描的UP,每轮必扫
+		if (!isInitialScanDone(uid)) return 0;
+		long latest = getLatestPubTimestamp(uid);
+		if (latest == 0) return 3;  // 无任何动态记录,视为静默
+		long delta = System.currentTimeMillis() - latest;
+		if (delta <= SEVEN_DAYS_MS) return 0;
+		if (delta <= THIRTY_DAYS_MS) return 1;
+		if (delta <= NINETY_DAYS_MS) return 2;
+		return 3;
+	}
+
+	/**
+	 * 根据桶级别和当前轮次决定是否扫描该UP
+	 * @param uid UP的uid
+	 * @param scanRound 当前扫描轮次(从0开始递增)
+	 * @return true 表示本轮需要扫描
+	 */
+	public static synchronized boolean shouldScanThisRound(String uid, int scanRound) {
+		int bucket = getBucketLevel(uid);
+		switch (bucket) {
+			case 0: return true;              // P0 每轮必扫
+			case 1: return scanRound % 2 == 0; // P1 每2轮扫一次
+			case 2: return scanRound % 4 == 0; // P2 每4轮扫一次
+			case 3: return scanRound % 8 == 0; // P3 每8轮扫一次
+			default: return true;
+		}
+	}
+
 	public static synchronized void markInitialScanDone(String uid, String upName) {
 		if (!dbAvailable) return;
 		try (PreparedStatement ps = conn.prepareStatement(

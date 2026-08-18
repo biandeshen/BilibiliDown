@@ -105,6 +105,9 @@ public class Global {
 	// 修改7: 增量模式专用页间sleep,下限3s避免触发B站风控
 	@Config(key = "bilibili.download.period.between.pages.incremental", note = "增量模式页间等待时间(ms),下限3000", defaultValue = "3000", multiply = 1)
 	public static long sleepBetweenPagesIncremental;
+	// A方案: 配置并行扫描线程数,默认5,1=串行
+	@Config(key = "bilibili.scan.parallelSize", note = "并行扫描UP配置数(1=串行,5=5并发,风控友好)", defaultValue = "5", multiply = 1)
+	public static int scanParallelSize;
 	@Config(key = "bilibili.download.period.between.batches", note = "不同url间等待时间(ms)", defaultValue = "1000", multiply = 1)
 	public static long sleepBetweenBatches;
 	@Config(key = "bilibili.download.period.between.cycles", note = "实时下载轮次间等待时间(ms)", defaultValue = "1800000", multiply = 1)
