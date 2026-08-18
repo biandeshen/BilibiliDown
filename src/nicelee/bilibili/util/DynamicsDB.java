@@ -136,6 +136,9 @@ st.execute(
 	}
 
 	// ===== 失败任务重试队列 =====
+	// P0-3修复: 最大重试次数,超过则放弃(视频可能已删除/下架/版权问题)
+	private static final int MAX_RETRY_COUNT = 10;
+
 	public static synchronized void insertFailedTask(String entryKey, String avid, String bvid, int page, int qn, String failReason) {
 		if (!dbAvailable) return;
 		try (PreparedStatement ps = conn.prepareStatement(
@@ -157,9 +160,11 @@ st.execute(
 		if (!dbAvailable) return list;
 		try (PreparedStatement ps = conn.prepareStatement(
 				"SELECT id, entry_key, avid, bvid, page, qn, fail_reason, retry_count FROM failed_tasks " +
-				"WHERE next_retry_at IS NULL OR next_retry_at <= CURRENT_TIMESTAMP " +
+				"WHERE (next_retry_at IS NULL OR next_retry_at <= CURRENT_TIMESTAMP) " +
+				"AND retry_count < ? " +  // P0-3修复: 超过MAX_RETRY_COUNT的不再重试
 				"ORDER BY created_at LIMIT ?")) {
-			ps.setInt(1, maxCount);
+			ps.setInt(1, MAX_RETRY_COUNT);
+			ps.setInt(2, maxCount);
 			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				FailedTaskItem item = new FailedTaskItem();
@@ -179,6 +184,15 @@ st.execute(
 
 	public static synchronized void markTaskRetried(int id, int retryCount) {
 		if (!dbAvailable) return;
+		// P0-3修复: 超过MAX_RETRY_COUNT直接删除,避免无限重试堆积
+		if (retryCount >= MAX_RETRY_COUNT) {
+			Logger.println("[失败任务放弃] id=" + id + " retryCount=" + retryCount + " 已达上限,删除任务");
+			try (PreparedStatement ps = conn.prepareStatement("DELETE FROM failed_tasks WHERE id=?")) {
+				ps.setInt(1, id);
+				ps.executeUpdate();
+			} catch (SQLException e) { checkConnectionValidity(e); Logger.println("markTaskRetried-delete: " + e.getMessage()); }
+			return;
+		}
 		// 指数退避：2^retryCount * 60秒，最大30分钟
 		long delaySec = Math.min((1L << retryCount) * 60, 1800);
 		try (PreparedStatement ps = conn.prepareStatement(
@@ -324,6 +338,42 @@ st.execute(
 			ResultSet rs = ps.executeQuery();
 			return rs.next() ? rs.getLong(1) : 0;
 		} catch (SQLException e) { checkConnectionValidity(e); return 0; }
+	}
+
+	/**
+	 * P0-4修复: 批量查询所有UP的最新动态时间戳(1次SQL替代777次)
+	 * @return Map<uid, latestPubTimestamp>
+	 */
+	public static synchronized java.util.Map<String, Long> getAllLatestPubTimestamps() {
+		java.util.Map<String, Long> result = new java.util.HashMap<>();
+		if (!dbAvailable) return result;
+		try (PreparedStatement ps = conn.prepareStatement(
+				"SELECT uid, MAX(pub_timestamp) FROM up_dynamics GROUP BY uid")) {
+			ResultSet rs = ps.executeQuery();
+			while (rs.next()) {
+				String uid = rs.getString(1);
+				long ts = rs.getLong(2);
+				if (uid != null) result.put(uid, ts);
+			}
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("getAllLatestPubTimestamps: " + e.getMessage()); }
+		return result;
+	}
+
+	/**
+	 * P0-4修复: 批量获取所有已完成全量扫描的UP集合(1次SQL)
+	 * @return Set<uid> 已完成全量扫描的UP
+	 */
+	public static synchronized java.util.Set<String> getInitialScanDoneUids() {
+		java.util.Set<String> result = new java.util.HashSet<>();
+		if (!dbAvailable) return result;
+		try (PreparedStatement ps = conn.prepareStatement(
+				"SELECT uid FROM up_status WHERE initial_scan_done=1")) {
+			ResultSet rs = ps.executeQuery();
+			while (rs.next()) {
+				result.add(rs.getString(1));
+			}
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("getInitialScanDoneUids: " + e.getMessage()); }
+		return result;
 	}
 
 	/**

@@ -134,12 +134,21 @@ public class RealTimeDownloadThread extends Thread {
 	 * A+C方案: 收集本轮所有该扫描的 batch
 	 * 1. 遍历所有配置文件
 	 * 2. 对每个 batch 提取 uid,调用 shouldScanThisRound 过滤
-	 * 3. 返回本轮需要扫描的 batch 列表
+	 * 3. P0-2修复: 按 batch.getUrl() 去重,避免跨配置重复扫描同一UP
+	 * 4. P0-4修复: 批量预加载分桶数据(2次SQL替代777次),内存中判断分桶
+	 * 5. 返回本轮需要扫描的 batch 列表
 	 */
 	private List<BatchDownload> collectBatchesToScan() {
-		List<BatchDownload> batchesToScan = new ArrayList<>();
+		// P0-4修复: 批量预加载分桶数据(2次SQL替代777×2次)
+		java.util.Map<String, Long> latestPubMap = DynamicsDB.getAllLatestPubTimestamps();
+		java.util.Set<String> initialDoneSet = DynamicsDB.getInitialScanDoneUids();
+		logger.info("[批量预加载] UP最新动态时间: {} 条, 已完成全量扫描: {} 条", latestPubMap.size(), initialDoneSet.size());
+
+		// P0-2修复: 用LinkedHashMap按URL去重,保留第一个出现的batch
+		java.util.LinkedHashMap<String, BatchDownload> dedupMap = new java.util.LinkedHashMap<>();
 		java.util.Collections.shuffle(configFilePaths);
 		int skippedCount = 0;
+		int duplicateCount = 0;
 		for (String configFilePath : configFilePaths) {
 			try {
 				Logger.println("实时下载进行中");
@@ -150,14 +159,20 @@ public class RealTimeDownloadThread extends Thread {
 				Logger.println("实时下载进行中。。。。。");
 				Logger.println(bds);
 				for (BatchDownload batch : bds) {
-					// C方案: 根据分桶级别决定是否扫描
-					String uid = extractUid(batch.getUrl());
-					if (uid != null && !DynamicsDB.shouldScanThisRound(uid, scanRound)) {
-						skippedCount++;
-						logger.debug("[分桶跳过] uid={} 轮次={} 本轮跳过", uid, scanRound);
+					String url = batch.getUrl();
+					// P0-2修复: 同URL跨配置去重
+					if (dedupMap.containsKey(url)) {
+						duplicateCount++;
+						logger.debug("[去重] url={} 跨配置重复,跳过", url);
 						continue;
 					}
-					batchesToScan.add(batch);
+					// C方案: 根据分桶级别决定是否扫描(用预加载数据,不查DB)
+					String uid = extractUid(url);
+					if (uid != null && !shouldScanThisRoundInMemory(uid, scanRound, latestPubMap, initialDoneSet)) {
+						skippedCount++;
+						continue;
+					}
+					dedupMap.put(url, batch);
 				}
 			} catch (Exception e) {
 				logger.error("[配置加载失败] {} - {}", configFilePath, e.getMessage());
@@ -166,14 +181,48 @@ public class RealTimeDownloadThread extends Thread {
 		if (skippedCount > 0) {
 			logger.info("[分桶跳过] 本轮跳过 {} 个 batch (低频UP)", skippedCount);
 		}
-		return batchesToScan;
+		if (duplicateCount > 0) {
+			logger.info("[去重] 本轮跳过 {} 个跨配置重复 batch", duplicateCount);
+		}
+		return new ArrayList<>(dedupMap.values());
+	}
+
+	/**
+	 * P0-4修复: 用预加载数据在内存中判断分桶,不查DB
+	 */
+	private boolean shouldScanThisRoundInMemory(String uid, int round,
+			java.util.Map<String, Long> latestPubMap, java.util.Set<String> initialDoneSet) {
+		int bucket;
+		if (!initialDoneSet.contains(uid)) {
+			bucket = 0;  // 未完成全量扫描,P0每轮必扫
+		} else {
+			Long latest = latestPubMap.get(uid);
+			if (latest == null || latest == 0) {
+				bucket = 3;  // 无动态记录,静默
+			} else {
+				long delta = System.currentTimeMillis() - latest;
+				if (delta <= 7L * 86400 * 1000) bucket = 0;
+				else if (delta <= 30L * 86400 * 1000) bucket = 1;
+				else if (delta <= 90L * 86400 * 1000) bucket = 2;
+				else bucket = 3;
+			}
+		}
+		switch (bucket) {
+			case 0: return true;
+			case 1: return round % 2 == 0;
+			case 2: return round % 4 == 0;
+			case 3: return round % 8 == 0;
+			default: return true;
+		}
 	}
 
 	/**
 	 * A方案: 并行处理所有 batch
 	 * 每个 batch 提交到 scanPool,等待全部完成
+	 * P0-6修复: 加15分钟超时,避免某个慢UP拖累整轮
 	 */
 	private void processBatchesInParallel(List<BatchDownload> batches) {
+		long startTime = System.currentTimeMillis();
 		List<CompletableFuture<Void>> futures = new ArrayList<>(batches.size());
 		for (BatchDownload batch : batches) {
 			futures.add(CompletableFuture.runAsync(() -> {
@@ -186,12 +235,27 @@ public class RealTimeDownloadThread extends Thread {
 				}
 			}, scanPool));
 		}
-		// 等待全部完成
+		// P0-6修复: 加15分钟超时,避免某个慢UP拖累整轮
+		CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
 		try {
-			CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-		} catch (Exception e) {
-			logger.error("[并行扫描] 等待完成异常: {}", e.getMessage());
+			allOf.get(15, TimeUnit.MINUTES);
+		} catch (java.util.concurrent.TimeoutException te) {
+			logger.warn("[并行扫描] 超时15分钟,取消未完成的batch");
+			// 取消未完成的future
+			for (CompletableFuture<Void> f : futures) {
+				if (!f.isDone()) f.cancel(true);
+			}
+		} catch (java.util.concurrent.ExecutionException ee) {
+			logger.error("[并行扫描] 执行异常: {}", ee.getMessage());
+		} catch (InterruptedException ie) {
+			Thread.currentThread().interrupt();
+			logger.warn("[并行扫描] 被中断,取消未完成的batch");
+			for (CompletableFuture<Void> f : futures) {
+				if (!f.isDone()) f.cancel(true);
+			}
 		}
+		long elapsed = System.currentTimeMillis() - startTime;
+		logger.info("[并行扫描] 本轮完成,耗时 {}ms", elapsed);
 	}
 
 	/**

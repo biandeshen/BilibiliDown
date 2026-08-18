@@ -2,6 +2,7 @@ package nicelee.bilibili.parsers.impl;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,6 +30,13 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 	private final static Pattern pattern = Pattern.compile("space\\.bilibili\\.com/([0-9]+)/dynamic");
 	private String spaceID;
 	private String currentOffset;
+
+	// P0-1修复: 串行化/feed/space动态列表API,避免5路并发触发B站风控(-352/-101/87008)
+	// 与playurlSemaphore(1)不同,这里用(2)允许有限并行,兼顾性能与风控
+	private static final java.util.concurrent.Semaphore feedSpaceSemaphore = new java.util.concurrent.Semaphore(2);
+	// 风控错误码退避配置
+	private static final int FEED_MAX_RETRY = 3;
+	private static final long[] FEED_BACKOFF_MS = {5000, 15000, 30000}; // 5s/15s/30s
 
 	public URL4UPDynamicParser(Object... obj) {
 		super(obj);
@@ -89,15 +97,42 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 			HashMap<String, String> headers = new HttpHeaders().getCommonHeaders("api.bilibili.com");
 			headers.put("Referer", "https://space.bilibili.com/" + spaceID + "/dynamic");
 			headers.put("Origin", "https://space.bilibili.com/");
-			String json = util.getContent(url, headers, HttpCookies.globalCookiesWithFingerprint());
-			Logger.println(url);
-			Logger.println(json);
 
-			JSONObject response = new JSONObject(json);
-			if (response.optInt("code") != 0) {
-				Logger.println("动态API返回错误: " + response.optString("message"));
-				currentOffset = null;
-				return pageQueryResult;
+			// P0-1修复: feedSpaceSemaphore串行化动态列表API + 风控错误码退避重试
+			String json = null;
+			JSONObject response = null;
+			for (int attempt = 0; attempt <= FEED_MAX_RETRY; attempt++) {
+				try {
+					feedSpaceSemaphore.acquire();
+					try {
+						json = util.getContent(url, headers, HttpCookies.globalCookiesWithFingerprint());
+						Logger.println(url);
+						Logger.println(json);
+					} finally {
+						feedSpaceSemaphore.release();
+					}
+					response = new JSONObject(json);
+					int code = response.optInt("code", -1);
+					if (code == 0) break; // 成功
+					// P0-1修复: 风控错误码退避(-352风控/-101未登录/87008频控/-404参数)
+					String msg = response.optString("message", "unknown");
+					Logger.println("动态API返回错误 code=" + code + " msg=" + msg + " attempt=" + (attempt + 1) + "/" + (FEED_MAX_RETRY + 1));
+					if (isRateLimitCode(code) && attempt < FEED_MAX_RETRY) {
+						long backoff = FEED_BACKOFF_MS[attempt] + ThreadLocalRandom.current().nextLong(0, 3000); // 加jitter避免惊群
+						Logger.println("触发风控,退避 " + backoff + "ms 后重试");
+						Thread.sleep(backoff);
+						continue;
+					}
+					// 非风控错误或重试耗尽,放弃本轮
+					currentOffset = null;
+					pageQueryResult.setErrorFlag(true);
+					return pageQueryResult;
+				} catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+					currentOffset = null;
+					pageQueryResult.setErrorFlag(true);
+					return pageQueryResult;
+				}
 			}
 
 			JSONObject data = response.getJSONObject("data");
@@ -186,8 +221,10 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 			// early stop: if all video items on this page are in catalog, stop pagination
 
 			// 一页处理完后sleep一次，避免API请求过于密集
+			// P0-5修复: 加jitter避免5路并发齐步走触发风控
 			if (map.size() > 0) {
-				Thread.sleep(500);
+				long sleepMs = 500 + ThreadLocalRandom.current().nextLong(0, 500); // 500-1000ms随机
+				Thread.sleep(sleepMs);
 			}
 
 			// 存储下一页的offset
@@ -212,6 +249,16 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 		}
 
 		return pageQueryResult;
+	}
+
+	/**
+	 * P0-1修复: 判断是否为风控/频控错误码,需要退避重试
+	 * -352: 账号风控, -101: 未登录/Cookie失效, 87008: playurl频控,
+	 * -403: 权限限制, -412: 风控限制, -509: 请求过于频繁
+	 */
+	private static boolean isRateLimitCode(int code) {
+		return code == -352 || code == -101 || code == 87008
+			|| code == -403 || code == -412 || code == -509;
 	}
 
 	@Override
