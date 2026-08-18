@@ -142,13 +142,19 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 						continue;
 					}
 					// check catalog first, then repo，避免浪费API请求
-					if (RepoUtil.isBvInRepo(bvid)) {
-						skippedCount++;
-						continue;
-					}
+				if (RepoUtil.isBvInRepo(bvid)) {
+					skippedCount++;
+					continue;
+				}
 
-					// 获取视频详细信息
-					VideoInfo video = getAVDetail(bvid, videoFormat, getVideoLink);
+				// 修改3: 增量模式下,isKnown=true的视频跳过getAVDetail(性能优化)
+				// 注意: 若视频下载失败,依赖修改5的failed_tasks队列恢复
+				if (isInitialDone && isKnown) {
+					continue;
+				}
+
+				// 获取视频详细信息
+				VideoInfo video = getAVDetail(bvid, videoFormat, getVideoLink);
 					// 确保UP主信息已设置（一般已在 trySetAuthorInfo 中设置，此处为保险）
 					ensureAuthorSet(modules);
 
@@ -173,9 +179,10 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 
 			if (skippedCount > 0) Logger.println("本页跳过 " + skippedCount + " 个已入库视频");
 			if (isInitialDone && videoOnPage > 0 && videoKnown >= videoOnPage) {
-				Logger.println("all videos on page known, stop pagination");
-				hasMore = false;
-			}
+			Logger.println("all videos on page known, stop pagination");
+			hasMore = false;
+			pageQueryResult.setHasMorePages(false);
+		}
 			// early stop: if all video items on this page are in catalog, stop pagination
 
 			// 一页处理完后sleep一次，避免API请求过于密集
@@ -201,7 +208,7 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 			Logger.println("获取动态列表失败: " + e.getMessage());
 			e.printStackTrace();
 			currentOffset = null;
-			pageQueryResult.setHasMorePages(false);
+			pageQueryResult.setErrorFlag(true);
 		}
 
 		return pageQueryResult;

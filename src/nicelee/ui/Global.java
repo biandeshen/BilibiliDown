@@ -102,6 +102,9 @@ public class Global {
 	public static long sleepAfterDownloadComplete;
 	@Config(key = "bilibili.download.period.between.pages", note = "分页查询时页间等待时间(ms)", defaultValue = "1500", multiply = 1)
 	public static long sleepBetweenPages;
+	// 修改7: 增量模式专用页间sleep,下限3s避免触发B站风控
+	@Config(key = "bilibili.download.period.between.pages.incremental", note = "增量模式页间等待时间(ms),下限3000", defaultValue = "3000", multiply = 1)
+	public static long sleepBetweenPagesIncremental;
 	@Config(key = "bilibili.download.period.between.batches", note = "不同url间等待时间(ms)", defaultValue = "1000", multiply = 1)
 	public static long sleepBetweenBatches;
 	@Config(key = "bilibili.download.period.between.cycles", note = "实时下载轮次间等待时间(ms)", defaultValue = "1800000", multiply = 1)

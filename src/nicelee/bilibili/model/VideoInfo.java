@@ -11,6 +11,7 @@ public class VideoInfo {
 	String brief;
 	LinkedHashMap<Long, ClipInfo> clips;
 	boolean hasMorePages = false;
+	boolean errorFlag = false;
 	String videoLink;
 
 	public void print() {
@@ -102,5 +103,7 @@ public class VideoInfo {
 	}
 	public boolean getHasMorePages() { return hasMorePages; }
 	public void setHasMorePages(boolean hasMorePages) { this.hasMorePages = hasMorePages; }
+	public boolean getErrorFlag() { return errorFlag; }
+	public void setErrorFlag(boolean errorFlag) { this.errorFlag = errorFlag; }
 
 }

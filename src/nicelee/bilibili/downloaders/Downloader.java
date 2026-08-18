@@ -84,6 +84,13 @@ public class Downloader implements IDownloader {
 		}
 	}
 
+	/**
+	 * 修改5: 标记任务为失败状态(用于构造失败面板让MonitoringThread接管重试)
+	 */
+	public void markAsFailed() {
+		status = StatusEnum.FAIL;
+	}
+
 	@Override
 	public void stopTask() {
 		if (downloader != null) {

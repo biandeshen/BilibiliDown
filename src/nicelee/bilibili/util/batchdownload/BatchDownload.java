@@ -422,7 +422,11 @@ public class BatchDownload implements Cloneable {
 			String sp = validStr + " p=" + page;
 			try {
 				VideoInfo avInfo = ina.getVideoDetail(sp, Global.downloadFormat, false);
-				java.util.Collection<ClipInfo> clips = avInfo.getClips().values();
+			// 修改1: 检查errorFlag，瞬态异常不标记全量完成，走异常重试路径
+			if (avInfo.getErrorFlag()) {
+				throw new RuntimeException("动态API返回异常(errorFlag=true)");
+			}
+			java.util.Collection<ClipInfo> clips = avInfo.getClips().values();
 				if (clips.size() == 0 && !avInfo.getHasMorePages()) {
 					naturalEnd = true;
 					break;
@@ -450,12 +454,21 @@ public class BatchDownload implements Cloneable {
 					}
 				}
 				consecutiveErrors = 0; // 整页处理成功，重置错误计数
-				// 全量模式：每页成功后保存扫描进度（供断点续扫）
-				if (dbTrackingEnabled && !isIncremental && !stopFlag) {
-					DynamicsDB.updateBatchScanPage(entryKey, page, startPage);
-				}
+			// 修改3: 增量模式下,本页无新增且API返回无更多页时立即停止(无需等连续N页)
+			// 利用修改2传递的 hasMorePages=false 信号,避免第1页全已知时仍扫第2页
+			if (isIncremental && !stopFlag && !avInfo.getHasMorePages() && newItemsOnThisPage == 0) {
+				logger.info("[增量早停] {} 第{}页无新增且无更多页,立即停止", entryKey, page);
+				naturalEnd = true;
+				break;
+			}
+			// 全量模式：每页成功后保存扫描进度（供断点续扫）
+			if (dbTrackingEnabled && !isIncremental && !stopFlag) {
+				DynamicsDB.updateBatchScanPage(entryKey, page, startPage);
+			}
 				page++;
-				Thread.sleep(Global.sleepBetweenPages);
+			// 修改7: 增量模式用专用sleep配置,设下限3s避免触发B站风控
+			long sleepMs = isIncremental ? Global.sleepBetweenPagesIncremental : Global.sleepBetweenPages;
+			Thread.sleep(Math.max(3000, sleepMs));
 				// 增量模式：连续N页无新增则停止
 				if (isIncremental && !stopFlag) {
 					if (newItemsOnThisPage == 0) {
@@ -476,9 +489,10 @@ public class BatchDownload implements Cloneable {
 					break;
 				}
 				// 单页异常不中断，重置无新增计数（防止API错误导致误判），跳过本页继续
-				consecutiveNoNewPages = 0;
-				page++;
-				try { Thread.sleep(Global.sleepBetweenPages); } catch (InterruptedException ie) { break; }
+			consecutiveNoNewPages = 0;
+			page++;
+			// 修改7: 异常重试sleep同样应用下限3s
+			try { Thread.sleep(Math.max(3000, isIncremental ? Global.sleepBetweenPagesIncremental : Global.sleepBetweenPages)); } catch (InterruptedException ie) { break; }
 			}
 		}
 

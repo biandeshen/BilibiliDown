@@ -31,6 +31,9 @@ import nicelee.ui.Global;
 
 public abstract class AbstractBaseParser implements IInputParser {
 
+	// 修改6: 串行化playurl请求，避免并发触发87008限流
+	private static final java.util.concurrent.Semaphore playurlSemaphore = new java.util.concurrent.Semaphore(1);
+
 	protected Matcher matcher;
 	protected HttpRequestUtil util;
 	protected int pageSize = 20;
@@ -407,20 +410,31 @@ public abstract class AbstractBaseParser implements IInputParser {
 			String json = null; JSONObject jResp = null;
 			int retry87008 = 0, maxRetry87008 = 5;
 			while (true) {
-				json = util.getContent(url, headers.getBiliJsonAPIHeaders(bvId), cookie);
-				Logger.println(json);
-				jResp = new JSONObject(json);
-				int playurlCode = jResp.optInt("code");
-				if (playurlCode == 0) break;
-				if (playurlCode == 87008 && retry87008 < maxRetry87008) {
-					retry87008++;
-					long wait = retry87008 * 20000L;
-					Logger.println("playurl rate limited (87008), retry " + retry87008 + "/" + maxRetry87008 + " after " + wait + "ms");
-					try { Thread.sleep(wait); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); throw new ApiLinkQueryParseError("playurl retry interrupted"); }
-					continue;
+				// 修改6: 串行化playurl请求，避免并发触发87008
+				try {
+					playurlSemaphore.acquire();
+				} catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+					throw new ApiLinkQueryParseError("playurl semaphore interrupted");
 				}
-				Logger.println("playurl API error: " + jResp.optString("message"));
-				throw new ApiLinkQueryParseError("playurl failed: " + jResp.optString("message"));
+				try {
+					json = util.getContent(url, headers.getBiliJsonAPIHeaders(bvId), cookie);
+					Logger.println(json);
+					jResp = new JSONObject(json);
+					int playurlCode = jResp.optInt("code");
+					if (playurlCode == 0) break;
+					if (playurlCode == 87008 && retry87008 < maxRetry87008) {
+						retry87008++;
+						long wait = retry87008 * 20000L;
+						Logger.println("playurl rate limited (87008), retry " + retry87008 + "/" + maxRetry87008 + " after " + wait + "ms");
+						try { Thread.sleep(wait); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); throw new ApiLinkQueryParseError("playurl retry interrupted"); }
+						continue;
+					}
+					Logger.println("playurl API error: " + jResp.optString("message"));
+					throw new ApiLinkQueryParseError("playurl failed: " + jResp.optString("message"));
+				} finally {
+					playurlSemaphore.release();
+				}
 			}
 			jObj = jResp.getJSONObject("data");
 		} else {

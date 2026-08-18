@@ -116,7 +116,100 @@ st.execute(
 			"  last_scan_time VARCHAR," +
 			"  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
 			"  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+
+		// 修改5: 失败任务持久化重试队列
+		st.execute(
+			"CREATE TABLE IF NOT EXISTS failed_tasks (" +
+			"  id IDENTITY PRIMARY KEY," +
+			"  entry_key VARCHAR," +
+			"  avid VARCHAR NOT NULL," +
+			"  bvid VARCHAR," +
+			"  page INT," +
+			"  qn INT," +
+			"  fail_reason VARCHAR," +
+			"  retry_count INT DEFAULT 0," +
+			"  next_retry_at TIMESTAMP," +
+			"  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
+			"  UNIQUE(avid, page, qn))");
+		st.execute("CREATE INDEX IF NOT EXISTS idx_ft_retry ON failed_tasks(next_retry_at, retry_count)");
 		}
+	}
+
+	// ===== 失败任务重试队列 =====
+	public static synchronized void insertFailedTask(String entryKey, String avid, String bvid, int page, int qn, String failReason) {
+		if (!dbAvailable) return;
+		try (PreparedStatement ps = conn.prepareStatement(
+				"MERGE INTO failed_tasks (entry_key, avid, bvid, page, qn, fail_reason, retry_count, next_retry_at, updated_at) " +
+				"KEY (avid, page, qn) " +
+				"VALUES (?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)")) {
+			ps.setString(1, entryKey);
+			ps.setString(2, avid);
+			ps.setString(3, bvid);
+			ps.setInt(4, page);
+			ps.setInt(5, qn);
+			ps.setString(6, failReason);
+			ps.executeUpdate();
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("insertFailedTask: " + e.getMessage()); }
+	}
+
+	public static synchronized List<FailedTaskItem> getRetryableTasks(int maxCount) {
+		List<FailedTaskItem> list = new ArrayList<>();
+		if (!dbAvailable) return list;
+		try (PreparedStatement ps = conn.prepareStatement(
+				"SELECT id, entry_key, avid, bvid, page, qn, fail_reason, retry_count FROM failed_tasks " +
+				"WHERE next_retry_at IS NULL OR next_retry_at <= CURRENT_TIMESTAMP " +
+				"ORDER BY created_at LIMIT ?")) {
+			ps.setInt(1, maxCount);
+			ResultSet rs = ps.executeQuery();
+			while (rs.next()) {
+				FailedTaskItem item = new FailedTaskItem();
+				item.id = rs.getInt(1);
+				item.entryKey = rs.getString(2);
+				item.avid = rs.getString(3);
+				item.bvid = rs.getString(4);
+				item.page = rs.getInt(5);
+				item.qn = rs.getInt(6);
+				item.failReason = rs.getString(7);
+				item.retryCount = rs.getInt(8);
+				list.add(item);
+			}
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("getRetryableTasks: " + e.getMessage()); }
+		return list;
+	}
+
+	public static synchronized void markTaskRetried(int id, int retryCount) {
+		if (!dbAvailable) return;
+		// 指数退避：2^retryCount * 60秒，最大30分钟
+		long delaySec = Math.min((1L << retryCount) * 60, 1800);
+		try (PreparedStatement ps = conn.prepareStatement(
+				"UPDATE failed_tasks SET retry_count=?, next_retry_at=DATEADD('SECOND', ?, CURRENT_TIMESTAMP) WHERE id=?")) {
+			ps.setInt(1, retryCount);
+			ps.setLong(2, delaySec);
+			ps.setInt(3, id);
+			ps.executeUpdate();
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("markTaskRetried: " + e.getMessage()); }
+	}
+
+	public static synchronized void removeFailedTask(String avid, int page, int qn) {
+		if (!dbAvailable) return;
+		try (PreparedStatement ps = conn.prepareStatement(
+				"DELETE FROM failed_tasks WHERE avid=? AND page=? AND qn=?")) {
+			ps.setString(1, avid);
+			ps.setInt(2, page);
+			ps.setInt(3, qn);
+			ps.executeUpdate();
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("removeFailedTask: " + e.getMessage()); }
+	}
+
+	public static class FailedTaskItem {
+		public int id;
+		public String entryKey;
+		public String avid;
+		public String bvid;
+		public int page;
+		public int qn;
+		public String failReason;
+		public int retryCount;
 	}
 
 	// ===== 大文件队列 =====

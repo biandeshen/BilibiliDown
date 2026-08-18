@@ -38,6 +38,7 @@ public class DownloadRunnable implements Runnable {
 	int remark;
 	String record;
 	int qn; //想要申请的链接视频质量
+	String entryKey; // 修改5: 批量配置URL，用于失败重试
 
 	final static String MSG_VIDEO_DOWNLOADED = "您已经下载过视频 %s\n如果想继续下载:\n"
 			+ "临时方案: 右上角[配置] -> [下载前先查询记录?] -> [不查询]\n"
@@ -53,6 +54,9 @@ public class DownloadRunnable implements Runnable {
 //		this.record = avid + "-" + qn  + "-p" + page;
 //	}
 	public DownloadRunnable(VideoInfo avInfo, ClipInfo clip, int qn) {
+		this(avInfo, clip, qn, null);
+	}
+	public DownloadRunnable(VideoInfo avInfo, ClipInfo clip, int qn, String entryKey) {
 		this.avInfo = avInfo;
 		this.displayName = clip.getAvTitle() + "p" + clip.getRemark() + "-" +clip.getTitle();
 		this.clip = clip;
@@ -62,6 +66,7 @@ public class DownloadRunnable implements Runnable {
 		this.remark = clip.getRemark();
 		this.qn = qn;
 		this.record = avid + "-" + qn  + "-p" + page;
+		this.entryKey = entryKey;
 	}
 
 	@Override
@@ -105,8 +110,45 @@ public class DownloadRunnable implements Runnable {
 		String urlQuery;
 		int realQN;
 		if(!ResourcesUtil.isPicture(avid)){
-			urlQuery = iNeedAV.getInputParser(avid).getVideoLink(avid, cid, qn, Global.downloadFormat); //该步含网络查询， 可能较为耗时
-			if (urlQuery == null) { Logger.println("无法获取下载链接: " + avid); return; }
+			// 修改4: 连接级重试 - getVideoLink内部吞异常返回null/空，重试3次
+			urlQuery = null;
+			int[] retryDelays = {1000, 2000, 5000};
+			for (int attempt = 0; attempt <= retryDelays.length; attempt++) {
+				try {
+					urlQuery = iNeedAV.getInputParser(avid).getVideoLink(avid, cid, qn, Global.downloadFormat);
+					if (urlQuery != null && !urlQuery.isEmpty()) break;
+					if (attempt < retryDelays.length) {
+						logger.warn("获取下载链接为空，{}ms后重试({}/{})", retryDelays[attempt], attempt + 1, retryDelays.length);
+						try { Thread.sleep(retryDelays[attempt]); } catch (InterruptedException ie) { break; }
+					}
+				} catch (Exception e) {
+					if (attempt < retryDelays.length) {
+						logger.warn("获取下载链接异常，{}ms后重试({}/{})：{}", retryDelays[attempt], attempt + 1, retryDelays.length, e.getMessage());
+						try { Thread.sleep(retryDelays[attempt]); } catch (InterruptedException ie) { break; }
+					} else {
+						logger.error("获取下载链接异常，重试耗尽：{}", e.getMessage(), e);
+					}
+				}
+			}
+			if (urlQuery == null) {
+			Logger.println("无法获取下载链接: " + avid);
+			// 修改5-混合方案: 持久化到failed_tasks表(跨会话恢复) + 构造FAIL面板(运行期间可见+自动/手动重试)
+			DynamicsDB.insertFailedTask(entryKey, avid, null, page, qn, "无法获取下载链接");
+			// 构造FAIL面板加入下载列表,让MonitoringThread的指数退避自动重试机制接管
+			DownloadInfoPanel failPanel = new DownloadInfoPanel(clip, qn);
+			String formattedTitleForFail = CmdUtil.genFormatedName(avInfo, clip, qn);
+			failPanel.initDownloadParams(iNeedAV, "", avid + "-" + qn, formattedTitleForFail, qn);
+			((nicelee.bilibili.downloaders.Downloader) failPanel.iNeedAV.getDownloader()).markAsFailed();
+			failPanel.getLbCurrentStatus().setText("下载异常. 获取链接失败 ");
+			failPanel.getBtnControl().setText("继续下载");
+			failPanel.getBtnControl().setVisible(true);
+			JPanel jpContent = Global.downloadTab.getJpContent();
+			jpContent.add(failPanel);
+			jpContent.setPreferredSize(new Dimension(1100, 128 * (Global.downloadTaskList.size() + 1)));
+			Global.downloadTaskList.put(failPanel, failPanel.iNeedAV.getDownloader());
+			BatchDownloadRbyRThread.taskFail(clip, "getVideoLink failed");
+			return;
+		}
 			realQN = iNeedAV.getInputParser(avid).getVideoLinkQN();
 			// large file -> put into pending list, not immediate download
 			if (Global.largeFileThreshold > 0 && !ResourcesUtil.isPicture(avid) && urlQuery != null) {

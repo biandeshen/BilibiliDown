@@ -100,22 +100,28 @@ public class DownloadRunnableInternal implements Runnable {
 				}
 			}
 			// 开始下载
-			if (iNeedAV.downloadClip(validUrl, avid, iNeedAV.getInputParser(avid).getVideoLinkQN(), page)) {
-				// 下载成功后保存到仓库
-				if (Global.saveToRepo) {
-					RepoUtil.appendAndSave(record);
-				}
-				DynamicsDB.markDownloaded(downPanel.getClipInfo().getUpId(), avid, realQN);
-				if (Global.thumbUpAfterDownloaded && Global.isLogin && avid.startsWith("BV")) {
-					API.like(avid);
-				}
-				CmdUtil.convertOrAppendCmdToRenameBat(avid_qn, formattedTitle, page);
+		if (iNeedAV.downloadClip(validUrl, avid, iNeedAV.getInputParser(avid).getVideoLinkQN(), page)) {
+			// 下载成功后保存到仓库
+			if (Global.saveToRepo) {
+				RepoUtil.appendAndSave(record);
 			}
-		} catch (BilibiliError e) {
-			JOptionPaneManager.alertErrMsgWithNewThread("发生了预料之外的错误", ResourcesUtil.detailsOfException(e));
-		} catch (Exception e) {
-		logger.error("异常", e);
-	}
+			DynamicsDB.markDownloaded(downPanel.getClipInfo().getUpId(), avid, realQN);
+			// 修改5-混合方案: 下载成功后清理failed_tasks表(若曾失败过)
+			DynamicsDB.removeFailedTask(avid, page, qn);
+			if (Global.thumbUpAfterDownloaded && Global.isLogin && avid.startsWith("BV")) {
+				API.like(avid);
+			}
+			CmdUtil.convertOrAppendCmdToRenameBat(avid_qn, formattedTitle, page);
+		}
+	} catch (BilibiliError e) {
+		JOptionPaneManager.alertErrMsgWithNewThread("发生了预料之外的错误", ResourcesUtil.detailsOfException(e));
+		// 修改5-混合方案: 持久化失败任务,供跨会话恢复
+		DynamicsDB.insertFailedTask(null, avid, null, page, qn, "BilibiliError: " + e.getMessage());
+	} catch (Exception e) {
+	logger.error("异常", e);
+	// 修改5-混合方案: 持久化失败任务,供跨会话恢复
+	DynamicsDB.insertFailedTask(null, avid, null, page, qn, "Exception: " + e.getMessage());
+}
 	if (Global.sleepAfterDownloadComplete > 0) {
 		try {
 			Thread.sleep(Global.sleepAfterDownloadComplete);
