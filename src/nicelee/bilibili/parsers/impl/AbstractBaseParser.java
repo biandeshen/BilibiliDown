@@ -90,6 +90,12 @@ public abstract class AbstractBaseParser implements IInputParser {
 		Logger.println(detailUrl);
 		Logger.println(detailJson);
 		JSONObject detailRaw = new JSONObject(detailJson);
+		int detailCode = detailRaw.optInt("code", -1);
+		// -404 "啥都木有": 视频已删除/不存在/审核未通过,直接返回null让调用方跳过
+		if(detailCode == -404) {
+			Logger.println("视频不存在或已删除: " + bvId + " code=-404");
+			return null;
+		}
 		long aid = ConvertUtil.Bv2Av(bvId);
 		int videoCnt; long ctime;
 		if(detailRaw.optInt("code") == -403) {

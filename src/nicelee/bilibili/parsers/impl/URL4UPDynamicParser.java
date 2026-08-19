@@ -189,8 +189,13 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 				}
 
 				// 获取视频详细信息
-				VideoInfo video = getAVDetail(bvid, videoFormat, getVideoLink);
-					// 确保UP主信息已设置（一般已在 trySetAuthorInfo 中设置，此处为保险）
+			VideoInfo video = getAVDetail(bvid, videoFormat, getVideoLink);
+				// -404等异常返回null,跳过该视频
+				if (video == null) {
+					Logger.println("跳过视频: " + bvid + " (详情获取失败,可能已删除)");
+					continue;
+				}
+				// 确保UP主信息已设置（一般已在 trySetAuthorInfo 中设置，此处为保险）
 					ensureAuthorSet(modules);
 
 					// 将视频的clips加入结果

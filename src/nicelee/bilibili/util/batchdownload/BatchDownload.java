@@ -410,6 +410,7 @@ public class BatchDownload implements Cloneable {
 		final int MAX_CONSECUTIVE_ERRORS = 3;
 		int consecutiveNoNewPages = 0; // 增量模式连续无新增页计数
 		final int INCREMENTAL_STOP_THRESHOLD = 2; // 连续2页无新增则停止
+		int totalNewItems = 0; // P0-7修复: 统计本batch新增视频数,用于决定是否sleep
 		while (!stopFlag) {
 			if (!isPageable && page >= 2) {
 				// 非分页URL只有1页，处理完即自然结束
@@ -434,24 +435,26 @@ public class BatchDownload implements Cloneable {
 				int newItemsOnThisPage = 0;
 				for (ClipInfo clip : clips) {
 					if (batch.matchStopCondition(clip, page)) {
-						if (batch.isIncludeBoundsBV() && batch.matchDownloadCondition(clip, page)) {
-							String dedupKey = clip.getAvId() + "-p" + clip.getPage();
-							if (dedupCache.add(dedupKey) && !existsInDownloadList(clip) && !RepoUtil.isBvInRepo(clip.getAvId())) {
-								Global.queryThreadPool.execute(new DownloadRunnable(avInfo, clip, VideoQualityEnum.getQN(Global.menu_qn)));
-								newItemsOnThisPage++;
-							}
-						}
-						stopFlag = true;
-						stopByCondition = true;
-						break;
-					}
-					if (batch.matchDownloadCondition(clip, page)) {
+					if (batch.isIncludeBoundsBV() && batch.matchDownloadCondition(clip, page)) {
 						String dedupKey = clip.getAvId() + "-p" + clip.getPage();
 						if (dedupCache.add(dedupKey) && !existsInDownloadList(clip) && !RepoUtil.isBvInRepo(clip.getAvId())) {
 							Global.queryThreadPool.execute(new DownloadRunnable(avInfo, clip, VideoQualityEnum.getQN(Global.menu_qn)));
 							newItemsOnThisPage++;
+							totalNewItems++; // P0-7修复: 累计本batch新增
 						}
 					}
+					stopFlag = true;
+					stopByCondition = true;
+					break;
+				}
+				if (batch.matchDownloadCondition(clip, page)) {
+					String dedupKey = clip.getAvId() + "-p" + clip.getPage();
+					if (dedupCache.add(dedupKey) && !existsInDownloadList(clip) && !RepoUtil.isBvInRepo(clip.getAvId())) {
+						Global.queryThreadPool.execute(new DownloadRunnable(avInfo, clip, VideoQualityEnum.getQN(Global.menu_qn)));
+						newItemsOnThisPage++;
+						totalNewItems++; // P0-7修复: 累计本batch新增
+					}
+				}
 				}
 				consecutiveErrors = 0; // 整页处理成功，重置错误计数
 			// 修改3: 增量模式下,本页无新增且API返回无更多页时立即停止(无需等连续N页)
@@ -503,9 +506,11 @@ public class BatchDownload implements Cloneable {
 		}
 		// stopByCondition 或 连续异常中断 不标记完成，保留 last_scanned_page 供下次续扫
 
-		// P0-8修复: 删除等下载完成的阻塞循环,扫描线程不再阻塞等待下载
-		// 下载并发限流已移到DownloadRunnable层(Global.downloadSlots)
-		try { Thread.sleep(Global.sleepBetweenBatches); } catch (InterruptedException e) {}
+		// P0-7修复: 有新增视频才sleep,无新增跳过避免280×5s=23分钟纯等待
+		// P0-8修复: 下载并发限流已移到DownloadRunnable层(Global.downloadSlots)
+		if (totalNewItems > 0) {
+			try { Thread.sleep(Global.sleepBetweenBatches); } catch (InterruptedException e) {}
+		}
 	}
 
 	private static boolean existsInDownloadList(ClipInfo clip) {
