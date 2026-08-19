@@ -114,6 +114,8 @@ public class Global {
 	public static long sleepBetweenCycles;
 	@Config(key = "bilibili.download.maxConcurrentUp", note = "实时下载时最多同时处理几个UP主", defaultValue = "2", multiply = 1)
 	public static int maxConcurrentUp;
+	// P0-8修复: 下载并发限流信号量,在DownloadRunnable层限流,避免扫描线程阻塞等待
+	public static java.util.concurrent.Semaphore downloadSlots;
 	@Config(key = "bilibili.download.largeFileThreshold", note = "大文件提醒阈值(MB), 0为不提醒", defaultValue = "500", multiply = 1024 * 1024)
 	public static long largeFileThreshold;
 	@Config(key = "bilibili.download.period.between.query", note = "每个关于下载的查询任务完成后的等待时间(ms)", defaultValue = "0", multiply = 1)
@@ -289,6 +291,9 @@ public class Global {
 		}
 		// 特殊处理
 		downLoadThreadPool = DownloadExecutors.newPriorityFixedThreadPool(downloadPoolSize);
+		// P0-8修复: 初始化下载限流信号量(与maxConcurrentUp一致)
+		downloadSlots = new java.util.concurrent.Semaphore(maxConcurrentUp, true);
+		logger.info("downloadSlots initialized with permits: " + maxConcurrentUp);
 		// 根据配置重建查询线程池(默认1串行,可配置为2~3提升吞吐量)
 		if (queryPoolSize > 1) {
 			queryThreadPool.shutdown();

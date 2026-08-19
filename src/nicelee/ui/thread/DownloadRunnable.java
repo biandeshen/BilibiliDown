@@ -71,6 +71,13 @@ public class DownloadRunnable implements Runnable {
 
 	@Override
 	public void run() {
+		// P0-8修复: 下载限流移到下载侧,避免扫描线程阻塞等待
+		try {
+			Global.downloadSlots.acquire();
+		} catch (InterruptedException ie) {
+			Thread.currentThread().interrupt();
+			return;
+		}
 		try {
 			download();
 		} catch (BilibiliError e) {
@@ -79,7 +86,9 @@ public class DownloadRunnable implements Runnable {
 		} catch (Exception e) {
 		logger.error("异常", e);
 		BatchDownloadRbyRThread.taskFail(clip, ResourcesUtil.detailsOfException(e));
-	}
+	} finally {
+			Global.downloadSlots.release();
+		}
 	}
 
 	public void download() {

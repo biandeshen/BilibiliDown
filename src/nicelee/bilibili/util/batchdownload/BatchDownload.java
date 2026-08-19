@@ -503,10 +503,8 @@ public class BatchDownload implements Cloneable {
 		}
 		// stopByCondition 或 连续异常中断 不标记完成，保留 last_scanned_page 供下次续扫
 
-		// 等活跃下载降到阈值以下再处理下一个UP
-		while (Global.downloadTab != null && Global.downloadTab.activeTask > Global.maxConcurrentUp) {
-			try { Thread.sleep(5000); } catch (InterruptedException e) { break; }
-		}
+		// P0-8修复: 删除等下载完成的阻塞循环,扫描线程不再阻塞等待下载
+		// 下载并发限流已移到DownloadRunnable层(Global.downloadSlots)
 		try { Thread.sleep(Global.sleepBetweenBatches); } catch (InterruptedException e) {}
 	}
 
