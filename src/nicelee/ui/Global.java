@@ -129,6 +129,8 @@ public class Global {
 	public static JTabbedPane tabs; // 下载显示界面
 	public static TabDownload downloadTab; // 下载显示界面
 	public static ConcurrentHashMap<DownloadInfoPanel, IDownloader> downloadTaskList = new ConcurrentHashMap<DownloadInfoPanel, IDownloader>();
+	// P1-4修复: 下载任务快速索引,key=avid+"-p"+page,避免existsInDownloadList O(N)全表扫描
+	public static ConcurrentHashMap<String, Boolean> downloadTaskIndex = new ConcurrentHashMap<>();
 	@Config(key = "bilibili.download.multiThread.count", note = "单个下载任务开启线程数(0,1为不开启多线程)", defaultValue = "0")
 	public static int multiThreadCnt; // 多线程下载开启的线程数 0为不开启多线程下载
 	@Config(key = "bilibili.download.multiThread.minFileSize", note = "文件大小小于阈值(整数, 单位MB)，则不开启多线程下载", defaultValue = "0", multiply = 1024 * 1024)

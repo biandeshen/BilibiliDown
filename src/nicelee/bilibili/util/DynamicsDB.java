@@ -571,6 +571,22 @@ st.execute(
 		return set;
 	}
 
+	/**
+	 * P1-2修复: 一次性加载本 UP 所有已知的 dynamic_id 集合
+	 * 用于 URL4UPDynamicParser 在扫描开始时预加载,避免每条动态 N+1 查询 contains()
+	 */
+	public static synchronized Set<String> getKnownDynamicIds(String uid) {
+		Set<String> set = new HashSet<>();
+		if (!dbAvailable) return set;
+		try (PreparedStatement ps = conn.prepareStatement(
+				"SELECT dynamic_id FROM up_dynamics WHERE uid=?")) {
+			ps.setString(1, uid);
+			ResultSet rs = ps.executeQuery();
+			while (rs.next()) set.add(rs.getString(1));
+		} catch (SQLException e) { checkConnectionValidity(e); Logger.println("getKnownDynamicIds: " + e.getMessage()); }
+		return set;
+	}
+
 	// ===== 写入（批量 MERGE INTO） =====
 	public static synchronized void insertDynamics(List<DynamicItem> items) {
 		if (!dbAvailable || items.isEmpty()) return;

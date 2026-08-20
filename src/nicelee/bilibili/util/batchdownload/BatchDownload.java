@@ -438,6 +438,7 @@ public class BatchDownload implements Cloneable {
 					if (batch.isIncludeBoundsBV() && batch.matchDownloadCondition(clip, page)) {
 						String dedupKey = clip.getAvId() + "-p" + clip.getPage();
 						if (dedupCache.add(dedupKey) && !existsInDownloadList(clip) && !RepoUtil.isBvInRepo(clip.getAvId())) {
+							Global.downloadTaskIndex.put(dedupKey, Boolean.TRUE); // P1-4修复: 同步索引
 							Global.queryThreadPool.execute(new DownloadRunnable(avInfo, clip, VideoQualityEnum.getQN(Global.menu_qn)));
 							newItemsOnThisPage++;
 							totalNewItems++; // P0-7修复: 累计本batch新增
@@ -450,6 +451,7 @@ public class BatchDownload implements Cloneable {
 				if (batch.matchDownloadCondition(clip, page)) {
 					String dedupKey = clip.getAvId() + "-p" + clip.getPage();
 					if (dedupCache.add(dedupKey) && !existsInDownloadList(clip) && !RepoUtil.isBvInRepo(clip.getAvId())) {
+						Global.downloadTaskIndex.put(dedupKey, Boolean.TRUE); // P1-4修复: 同步索引
 						Global.queryThreadPool.execute(new DownloadRunnable(avInfo, clip, VideoQualityEnum.getQN(Global.menu_qn)));
 						newItemsOnThisPage++;
 						totalNewItems++; // P0-7修复: 累计本batch新增
@@ -514,11 +516,9 @@ public class BatchDownload implements Cloneable {
 	}
 
 	private static boolean existsInDownloadList(ClipInfo clip) {
-		for (DownloadInfoPanel dp : Global.downloadTaskList.keySet()) {
-			if (clip.getAvId() != null && clip.getAvId().equals(dp.getAvid()) && dp.getClipInfo().getPage() == clip.getPage()) {
-				return true;
-			}
-		}
-		return false;
+		// P1-4修复: 用ConcurrentHashMap索引O(1)判断,替代O(N)全表遍历
+		if (clip.getAvId() == null) return false;
+		String key = clip.getAvId() + "-p" + clip.getPage();
+		return Global.downloadTaskIndex.containsKey(key);
 	}
 }

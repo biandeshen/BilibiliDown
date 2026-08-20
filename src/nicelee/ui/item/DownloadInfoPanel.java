@@ -283,6 +283,8 @@ public class DownloadInfoPanel extends JPanel implements ActionListener {
 			Global.downloadTaskList.get(this).stopTask();
 			// 全局监控撤销
 			Global.downloadTaskList.remove(this);
+			// P1-4修复: 同步删除索引
+			Global.downloadTaskIndex.remove(this.getAvid() + "-p" + this.getClipInfo().getPage());
 			// 当前页面控件删除
 			Global.downloadTab.getJpContent().remove(this);
 			// 大小重新适配

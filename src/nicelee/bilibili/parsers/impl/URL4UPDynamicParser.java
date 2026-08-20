@@ -77,6 +77,9 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 		boolean getVideoLink = (boolean) obj[1];
 		boolean isInitialDone = DynamicsDB.isInitialScanDone(spaceID);
 
+		// P1-2修复: 预加载本UP所有已知dynamic_id,避免循环内N+1查DB
+		java.util.Set<String> knownDynamicIds = DynamicsDB.getKnownDynamicIds(spaceID);
+
 		if (page == 1) {
 			currentOffset = DynamicsDB.getLastOffset(spaceID);
 			if (currentOffset == null) currentOffset = "";
@@ -152,11 +155,14 @@ public class URL4UPDynamicParser extends AbstractPageQueryParser<VideoInfo> {
 				String type = item.optString("type", "");
 
 				String dynamicId = item.optString("id_str", "");
-				JSONObject mods = null;
-				try { mods = item.optJSONObject("modules"); } catch (Exception e) {}
-				boolean isKnown = DynamicsDB.contains(spaceID, dynamicId);
-				if (!isKnown)
-					recordDynamicToDB(spaceID, dynamicId, type, mods);
+			JSONObject mods = null;
+			try { mods = item.optJSONObject("modules"); } catch (Exception e) {}
+			// P1-2修复: 用预加载的Set内存判断,避免N+1查DB
+			boolean isKnown = knownDynamicIds.contains(dynamicId);
+			if (!isKnown) {
+				recordDynamicToDB(spaceID, dynamicId, type, mods);
+				knownDynamicIds.add(dynamicId); // 同步内存Set,本轮后续页可用
+			}
 				if (pageQueryResult.getVideoName() == null && mods != null)
 					trySetAuthorInfo(mods);
 				if (!"DYNAMIC_TYPE_AV".equals(type)) continue;

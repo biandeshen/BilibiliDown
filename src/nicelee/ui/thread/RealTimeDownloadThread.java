@@ -47,6 +47,9 @@ public class RealTimeDownloadThread extends Thread {
 	List<String> configFilePaths;
 	private volatile boolean paused = false;
 	private Map<String, Long> configLastModified = new HashMap<>();
+	// P1-1修复: 配置文件解析结果缓存,key=configFilePath, value=解析后的batch列表
+	// 配置文件未变化时复用,避免每轮重新读777个文件+解析
+	private Map<String, List<BatchDownload>> configCache = new HashMap<>();
 	// A+C方案: 扫描轮次计数器(每完成一轮+1),用于分桶判断
 	private int scanRound = 0;
 	// A方案: 并行扫描线程池(懒加载,复用)
@@ -154,8 +157,17 @@ public class RealTimeDownloadThread extends Thread {
 				Logger.println("实时下载进行中");
 				File f = ResourcesUtil.search(configFilePath);
 				checkValid(f);
-				List<BatchDownload> bds = new BatchDownloadsBuilder(new FileInputStream(f)).Build();
-				BatchDownload.replaceVideoWithDynamic(bds);
+				// P1-1修复: 配置文件未变化时复用解析结果,避免每轮重新读777个文件+解析
+				long lastMod = f.lastModified();
+				List<BatchDownload> bds = configCache.get(configFilePath);
+				Long cachedMod = configLastModified.get(configFilePath);
+				if (bds == null || cachedMod == null || cachedMod != lastMod) {
+					// 文件首次加载或已变化,重新解析
+					bds = new BatchDownloadsBuilder(new FileInputStream(f)).Build();
+					BatchDownload.replaceVideoWithDynamic(bds);
+					configCache.put(configFilePath, bds);
+					configLastModified.put(configFilePath, lastMod);
+				}
 				Logger.println("实时下载进行中。。。。。");
 				Logger.println(bds);
 				for (BatchDownload batch : bds) {
