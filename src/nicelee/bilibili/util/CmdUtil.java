@@ -49,11 +49,32 @@ public class CmdUtil {
             	pb.redirectError(Redirect.INHERIT);
             }else {
             	pb.redirectOutput(DISCARD);
-            	pb.redirectError(DISCARD);
+            	// ffmpeg 失败时捕获 stderr 用于诊断,不丢弃
+            	pb.redirectErrorStream(true);
+            	pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
             }
 			process = pb.start();
-			process.waitFor();
-			logger.info("process 执行完毕");
+			// 读取合并后的 stdout+stderr (非 debugCmd 模式下)
+			java.io.InputStream is = process.getInputStream();
+			StringBuilder errOutput = new StringBuilder();
+			if (!Global.debugCmd) {
+				try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is))) {
+					String line;
+					while ((line = reader.readLine()) != null) {
+						errOutput.append(line).append("\n");
+					}
+				}
+			}
+			int exitCode = process.waitFor();
+			logger.info("process 执行完毕, exitCode={}", exitCode);
+			if (exitCode != 0) {
+				String errMsg = errOutput.toString();
+				if (errMsg.length() > 2000) errMsg = errMsg.substring(0, 2000) + "...(truncated)";
+				logger.error("ffmpeg执行失败 exitCode={} cmd={} stderr:\n{}", exitCode, Arrays.toString(cmd), errMsg);
+				Logger.println("ffmpeg执行失败 exitCode=" + exitCode + " cmd=" + Arrays.toString(cmd));
+				Logger.println("ffmpeg stderr:\n" + errMsg);
+				return false;
+			}
 			return true;
 		} catch (Exception e) {
 			// e.printStackTrace();
@@ -76,20 +97,28 @@ public class CmdUtil {
 		File audio = new File(Global.savePath + audioName);
 		if (!mp4File.exists()) {
 			Logger.println("下载完毕, 正在运行转码程序...");
-			run(cmd);
-			if (mp4File.exists() && mp4File.length() > video.length()) {
+			boolean runOk = run(cmd);
+			if (runOk && mp4File.exists() && mp4File.length() > video.length()) {
 				video.delete();
 				audio.delete();
 				return true;
 			}
-			Logger.println("转码完毕");
+			// 转码失败诊断
+			Logger.println("转码失败诊断:");
+			Logger.println("  视频源: " + video.getAbsolutePath() + " exists=" + video.exists() + " size=" + video.length());
+			if (audio != null) {
+				Logger.println("  音频源: " + audio.getAbsolutePath() + " exists=" + audio.exists() + " size=" + audio.length());
+			}
+			Logger.println("  目标文件: " + mp4File.getAbsolutePath() + " exists=" + mp4File.exists() + " size=" + mp4File.length());
+			Logger.println("  ffmpeg命令: " + Arrays.toString(cmd));
+			Logger.println("  run()返回: " + runOk);
+			return false;
 		} else {
 			Logger.println("下载完毕");
 			return true;
 		}
-		return false;
 	}
-	
+
 	/**
 	 * 片段合并转码
 	 * 
