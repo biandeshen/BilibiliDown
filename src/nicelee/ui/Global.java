@@ -108,6 +108,9 @@ public class Global {
 	// A方案: 配置并行扫描线程数,默认5,1=串行
 	@Config(key = "bilibili.scan.parallelSize", note = "并行扫描UP配置数(1=串行,5=5并发,风控友好)", defaultValue = "5", multiply = 1)
 	public static int scanParallelSize;
+	// P2-1修复: playurl API并发数,默认1串行,可调到2提升吞吐(有87008退避保护)
+	@Config(key = "bilibili.api.playurl.parallelSize", note = "playurl API并发数(1=串行安全,2=提速,触发87008时自动退避)", defaultValue = "1", multiply = 1)
+	public static int playurlParallelSize;
 	@Config(key = "bilibili.download.period.between.batches", note = "不同url间等待时间(ms)", defaultValue = "1000", multiply = 1)
 	public static long sleepBetweenBatches;
 	@Config(key = "bilibili.download.period.between.cycles", note = "实时下载轮次间等待时间(ms)", defaultValue = "1800000", multiply = 1)

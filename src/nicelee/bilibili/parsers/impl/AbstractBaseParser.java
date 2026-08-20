@@ -32,7 +32,22 @@ import nicelee.ui.Global;
 public abstract class AbstractBaseParser implements IInputParser {
 
 	// 修改6: 串行化playurl请求，避免并发触发87008限流
-	private static final java.util.concurrent.Semaphore playurlSemaphore = new java.util.concurrent.Semaphore(1);
+	// P2-1修复: playurl并发数可配置,默认1串行,Global.init后lazy init
+	private static volatile java.util.concurrent.Semaphore playurlSemaphore = new java.util.concurrent.Semaphore(1);
+	private static volatile boolean playurlSemInited = false;
+	private static java.util.concurrent.Semaphore getPlayurlSemaphore() {
+		if (!playurlSemInited) {
+			synchronized (AbstractBaseParser.class) {
+				if (!playurlSemInited) {
+					int permits = Math.max(1, Global.playurlParallelSize);
+					playurlSemaphore = new java.util.concurrent.Semaphore(permits, true);
+					playurlSemInited = true;
+					Logger.println("playurlSemaphore initialized with permits: " + permits);
+				}
+			}
+		}
+		return playurlSemaphore;
+	}
 
 	protected Matcher matcher;
 	protected HttpRequestUtil util;
@@ -417,8 +432,9 @@ public abstract class AbstractBaseParser implements IInputParser {
 			int retry87008 = 0, maxRetry87008 = 5;
 			while (true) {
 				// 修改6: 串行化playurl请求，避免并发触发87008
+				// P2-1修复: 并发数可配置,通过getPlayurlSemaphore()获取
 				try {
-					playurlSemaphore.acquire();
+					getPlayurlSemaphore().acquire();
 				} catch (InterruptedException ie) {
 					Thread.currentThread().interrupt();
 					throw new ApiLinkQueryParseError("playurl semaphore interrupted");
@@ -439,7 +455,7 @@ public abstract class AbstractBaseParser implements IInputParser {
 					Logger.println("playurl API error: " + jResp.optString("message"));
 					throw new ApiLinkQueryParseError("playurl failed: " + jResp.optString("message"));
 				} finally {
-					playurlSemaphore.release();
+					getPlayurlSemaphore().release();
 				}
 			}
 			jObj = jResp.getJSONObject("data");
